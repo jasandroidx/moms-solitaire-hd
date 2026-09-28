@@ -2,7 +2,7 @@
 
 Generated with ElevenLabs (free tier). Files live in `sfx/` next to `index.html`.
 The game loads clips via `Vox` (`new Audio('sfx/'+file)`) mapped in `CUSTOM.vox` in `index.html`.
-Synthesized `Sfx.*` (click/flip/bad/win/etc.) are WebAudio tones — soft procedural SFX stay; mp3s layer sparsely on top.
+Synthesized `Sfx.*` (click/flip/bad/win/fanfare/etc.) are WebAudio tones — soft procedural SFX stay; mp3s layer sparsely on top.
 
 ## Sparse playback
 
@@ -12,19 +12,19 @@ Synthesized `Sfx.*` (click/flip/bad/win/etc.) are WebAudio tones — soft proced
 
 | File | `CUSTOM.vox` key | When | Chance |
 |------|------------------|------|--------|
-| `lah-lah-solitaire-intro.mp3` | `intro` | Splash / logo letter reveal in `showIntro()` | **ALWAYS** (once per session open) |
+| `audience-cheer-clap.mp3` | `cheer` | Splash/logo reveal (with `Sfx.fanfare`); also rare place celebration | Splash **ALWAYS** once; places ~10% roll then subset cheer |
 | `card-place.mp3` | `cardPlace` | Successful tableau/foundation place via `placeSfx()` | ~10% (mutually exclusive vs cheer) |
-| `audience-cheer-clap.mp3` | `cheer` | Same `placeSfx()` roll — foundation bias | ~10% place roll, then subset cheer |
 | `crowd-ooooh.mp3` | `ooooh` | Foundation place peaks; ace/king flips in `afterMove` | ~10% |
 | `crowd-aaaah.mp3` | `aaaah` | Same peaks (coin-flip vs ooooh) | ~10% |
 | `deal-whoosh.mp3` | `dealWhoosh` | `messFly` deal + `floatUp` / new deal | ~10% |
 | `win-jingle.mp3` | `winJingle` | `onWin` layered with existing `win` VO | **ALWAYS** (wins are rare) |
 
+Unwired (file may remain on disk): `lah-lah-solitaire-intro.mp3` — do **not** play on splash.
 Skip wiring `marching-band.mp3` (user already has it / synth bed).
 
 ## Hook points
 
-- **Intro:** `showIntro()` when `#splash` is shown (logo appearing) → `Vox.play('intro')` once
+- **Splash:** `showIntro()` when `#splash` is shown → `Sfx.fanfare()` + `Vox.play('cheer')` once (no TTS intro)
 - **Card place:** drag/tap/pile success → `this.placeSfx(toFoundation)` after `Sfx.flip()`
 - **Reactions:** foundation success + ace/king flips → `Vox.maybe('ooooh'|'aaaah', 0.1)`
 - **Deal:** `messFly` / `floatUp` → `Vox.maybe('dealWhoosh', 0.1)`

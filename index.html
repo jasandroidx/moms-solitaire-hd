@@ -952,11 +952,11 @@ const CUSTOM = {
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
     // ElevenLabs SFX (sparse via Vox.maybe — ~1/10 unless noted)
-    intro: 'lah-lah-solitaire-intro.mp3',  // epic announcer — ALWAYS on splash/logo reveal (once per open)
+    // (lah-lah-solitaire-intro.mp3 intentionally unwired — splash uses fanfare + cheer)
     cardPlace: 'card-place.mp3',           // successful place (~10%)
     ooooh: 'crowd-ooooh.mp3',              // ace/king/foundation peaks (~10%)
     aaaah: 'crowd-aaaah.mp3',              // foundation / big place (~10%)
-    cheer: 'audience-cheer-clap.mp3',      // rare place celebration (~10%, not stacked with cardPlace)
+    cheer: 'audience-cheer-clap.mp3',      // splash applause + rare place celebration (~10%, not stacked with cardPlace)
     winJingle: 'win-jingle.mp3',           // win layer (always — wins are rare)
     dealWhoosh: 'deal-whoosh.mp3',         // deal / floatUp (~10% or once per deal)
   },
@@ -1678,14 +1678,19 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
+    // Snapshot drop point BEFORE clearing ghosts. Detached nodes report 0×0 rects, so
+    // hit-testing after innerHTML='' always missed the pile (highlights OK, commit = illegal/womp).
+    let cx=null, cy=null;
+    if(d&&d.active&&d.ghosts&&d.ghosts[0]){
+      const gx=d.ghosts[0].getBoundingClientRect();
+      cx=gx.left+gx.width/2; cy=gx.top+gx.height/2;
+    } else if(e&&e.clientX!=null){ cx=e.clientX; cy=e.clientY; }
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
     if(cancelled||!d.active){ this.onTap(d.el,d.loc); return; }
-    // drop: hit-test piles
-    const gx=d.ghosts[0].getBoundingClientRect();
-    const cx=gx.left+gx.width/2, cy=gx.top+gx.height/2;
-    const target=document.elementFromPoint(cx,cy);
+    // drop: hit-test piles (same rules as updateDropHint / engine canPlace*)
+    const target=(cx!=null)?document.elementFromPoint(cx,cy):null;
     const pile=target&&target.closest?target.closest('.pile,.tcol'):null;
     let done=false;
     if(pile){
@@ -1781,8 +1786,8 @@ class UI {
     });
     $('#splashsub').textContent=CUSTOM.splashSub;
     const splash=$('#splash'); splash.classList.remove('hide');
-    // Epic "LAH LAH SOLITAIIIIRRREEEE!!!" as the logo/splash letters appear (once per session open)
-    if(!this._introPlayed){ this._introPlayed=true; Sfx.ensure(); Vox.play('intro'); }
+    // Splash/logo appear: synth fanfare + audience applause (no TTS intro)
+    if(!this._introPlayed){ this._introPlayed=true; Sfx.ensure(); Sfx.fanfare(); Vox.play('cheer'); }
     setTimeout(()=>splash.classList.add('hide'), 2400);
     $('#intro').classList.remove('hide');
     // the button that refuses to work — it flees to a corner, she chases it.
