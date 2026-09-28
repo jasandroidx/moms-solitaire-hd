@@ -504,6 +504,7 @@ body[data-scene]::after{
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
+  <button class="btn" id="bDaily">Daily Deal</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
   <button class="btn" id="bHint">Hint</button>
@@ -1010,6 +1011,9 @@ class UI {
     this.design=store.get('design','classic');
     this.playerName=store.get('playerName','Mom');
     this.stats=store.get('stats',{games:0,wins:0,best:{}});
+    this.dailyStats=store.get('daily_stats',{}); // date -> { bestTime, bestMoves, won }
+    this.isDaily=false;
+    this.dailyDate=null;
     this.startTime=null; this.timerId=null; this.won=false;
     this.drag=null;
     this.applyTheme(); this.applyName(); this.applyDesign();
@@ -1021,8 +1025,29 @@ class UI {
     setInterval(()=>{ if(this.surprise==='timed'&&!this.won&&Date.now()-this.lastSwap>CUSTOM.surpriseSec*1000) this.pickSurprise(); },15000);
   }
   /* ---------- game flow ---------- */
-  newGame(announce){
+  todayStr(){
+    const d=new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  startDailyDeal(){
+    Sfx.click(); this.clearWinShow(); this.floatUp();
+    this.isDaily=true;
+    this.dailyDate=this.todayStr();
+    const cards=[...document.querySelectorAll('#board .card')];
+    cards.forEach(c=>{
+      const d=(0.9+Math.random()*0.5).toFixed(2), dl=(Math.random()*0.4).toFixed(2);
+      c.style.transition=`transform ${d}s ease-in ${dl}s, opacity ${d}s ease-in ${dl}s`;
+      c.style.transform=`translate(${(Math.random()*200-100).toFixed(0)}px,${(-(innerHeight+200)).toFixed(0)}px) rotate(${(Math.random()*70-35).toFixed(0)}deg)`;
+      c.style.opacity='0';
+    });
+    setTimeout(()=>this.newGame(true, true),1150);
+  }
+  newGame(announce, preserveDaily){
     this.clearWinShow();
+    if(!preserveDaily){
+      this.isDaily=false;
+      this.dailyDate=null;
+    }
     this.stats.games++; store.set('stats',this.stats);
     this._messAnnounce=announce;
     this.enterMessy();
@@ -1086,7 +1111,11 @@ class UI {
   finishDeal(announce){
     this.messy=false;
     this.drawCount=store.get('drawCount',1); // pending draw setting takes effect on the new game only
-    this.eng.newGame(this.drawCount);
+    if(this.isDaily && this.dailyDate){
+      this.eng.newGame(this.drawCount, seedPRNG(this.dailyDate));
+    } else {
+      this.eng.newGame(this.drawCount);
+    }
     this._backPhotos={}; // reshuffle the photo backs for the new game
     this._kingHeartsPlayed=false; // 👑 king-of-hearts gag resets each game
     if(this.surprise==='game') this.pickSurprise(true);
@@ -1147,7 +1176,19 @@ class UI {
   stopTimer(){ clearInterval(this.timerId); this.timerId=null; }
   updateStats(){
     const d=this.eng.describe();
-    $('#stats').innerHTML=`${this.tick()} · ${d.moves} moves<br>${this.stats.wins} won`;
+    let label = `${this.tick()} · ${d.moves} moves<br>`;
+    if(this.isDaily && this.dailyDate){
+      const ds = this.dailyStats[this.dailyDate];
+      if(ds && ds.won){
+        const bm = Math.floor(ds.bestTime/60)+':'+String(ds.bestTime%60).padStart(2,'0');
+        label += `📅 Daily (${this.dailyDate}) Best: ${bm} (${ds.bestMoves}m)`;
+      } else {
+        label += `📅 Daily (${this.dailyDate})`;
+      }
+    } else {
+      label += `${this.stats.wins} won`;
+    }
+    $('#stats').innerHTML=label;
   }
   afterMove(msg){
     this.ensureTimer(); this.view.render(this); this.updateStats();
@@ -1161,13 +1202,30 @@ class UI {
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
     this.stats.wins++; store.set('stats',this.stats);
     const secs=Math.floor((Date.now()-this.startTime)/1000);
+    const moves=this.eng.state.moves;
     const bk=this.stats.best[this.drawCount]||Infinity;
     if(secs<bk){ this.stats.best[this.drawCount]=secs; store.set('stats',this.stats); }
+
+    let dailyNewBest = false;
+    if(this.isDaily && this.dailyDate){
+      const ds = this.dailyStats[this.dailyDate] || { bestTime: Infinity, bestMoves: Infinity, won: false };
+      ds.won = true;
+      if(secs < ds.bestTime) { ds.bestTime = secs; dailyNewBest = true; }
+      if(moves < ds.bestMoves) { ds.bestMoves = moves; dailyNewBest = true; }
+      this.dailyStats[this.dailyDate] = ds;
+      store.set('daily_stats', this.dailyStats);
+    }
+
     Sfx.win(); Vox.play('win'); this.winShow();
     if(this.stats.wins===1) setTimeout(()=>this.bonusVideo(),4500); // first win ever: bonus video
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
-    $('#winstats').textContent=`${this.tick()} · ${this.eng.state.moves} moves · Draw ${this.drawCount}`+
-      (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
+    let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
+    if(this.isDaily && this.dailyDate){
+      winMsg += dailyNewBest ? ` — new Daily best! 📅🏅` : ` (Daily Deal ${this.dailyDate})`;
+    } else {
+      winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
+    }
+    $('#winstats').textContent=winMsg;
     setTimeout(()=>$('#winoverlay').classList.add('show'),900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
@@ -1541,6 +1599,7 @@ class UI {
       p.addEventListener('click',e=>{ if(e.target.closest('.card')) return; this.onPileTap(p); });
     });
     $('#bDeal').onclick=()=>this.newDeal();
+    $('#bDaily').onclick=()=>this.startDailyDeal();
     $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
     $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
