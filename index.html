@@ -1050,7 +1050,7 @@ class UI {
       this.dailyDate=null;
     }
     this.stats.games++; store.set('stats',this.stats);
-    this._messAnnounce=announce;
+    this._messAnnounce=announce; this._finishing=false;
     this.enterMessy();
   }
   enterMessy(){
@@ -1198,6 +1198,9 @@ class UI {
     if(!this._kingHeartsPlayed&&flips.some(c=>c.suit==='hearts'&&c.rank===13)){ this._kingHeartsPlayed=true; Vox.play('kingHearts'); } // 👑 first K♥ flip
     if(msg) this.say(msg);
     if(this.eng.isWon()) this.onWin();
+    // everything's free and the win is guaranteed: flash-forward to the finish
+    else if(!this._finishing&&this.eng.canAutoComplete()){ this._finishing=true;
+      this.say('All free \u2014 finishing it off! \u2728'); setTimeout(()=>this.autoLoop(),650); }
   }
   onWin(){
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
@@ -1218,7 +1221,7 @@ class UI {
     }
 
     Sfx.win(); Vox.play('win'); this.winShow();
-    if(this.stats.wins===1) setTimeout(()=>this.bonusVideo(),4500); // first win ever: bonus video
+    // bonus video after first win: disabled for now (win shows only)
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
     if(this.isDaily && this.dailyDate){
