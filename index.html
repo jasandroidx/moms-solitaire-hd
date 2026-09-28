@@ -98,26 +98,6 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 /* drag layer */
 #draglayer{position:fixed;left:0;top:0;pointer-events:none;z-index:50;}
 #draglayer .card{position:absolute;}
-/* ---------- drawer ---------- */
-#drawer{
-  position:fixed;left:0;right:0;bottom:0;z-index:60;
-  background:#fdfbf6;color:#2b3a42;border-radius:20px 20px 0 0;
-  padding:16px 18px 28px;transform:translateY(105%);transition:transform .3s ease;
-  max-height:80vh;overflow-y:auto;box-shadow:0 -6px 30px rgba(0,0,0,.4);
-}
-#drawer.open{transform:translateY(0);}
-#drawer h2{margin:4px 0 12px;font-size:20px;}
-#drawer h3{margin:14px 0 8px;font-size:15px;opacity:.75;}
-.swatchrow{display:flex;gap:10px;flex-wrap:wrap;}
-.swatch{width:52px;height:52px;border-radius:14px;border:3px solid transparent;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(0,0,0,.15);}
-.swatch.on{border-color:#2b3a42;}
-.backswatch{width:52px;height:74px;border-radius:8px;border:3px solid transparent;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-size:26px;color:rgba(255,255,255,.9);}
-.backswatch.on{border-color:#2b3a42;}
-#drawer label{font-size:15px;display:block;margin:10px 0;}
-#drawer input[type=text]{font-size:16px;padding:8px 10px;border-radius:10px;border:1px solid #bbb;width:200px;}
-#drawer input[type=file]{font-size:14px;}
-.rowbtns{display:flex;gap:10px;margin-top:16px;}
 /* ---------- win overlay ---------- */
 #winoverlay{
   position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
@@ -215,7 +195,7 @@ body[data-design="neon"] .btn{border:1px solid var(--accent);}
 #helpcard h2{margin-top:0;}
 button:focus-visible,.card:focus-visible{outline:3px solid var(--gold);outline-offset:2px;}
 @media (prefers-reduced-motion:reduce){
-  .card .in{transition:none;} #drawer{transition:none;}
+  .card .in{transition:none;}
   .card.hintglow .front{animation:none;outline:4px solid var(--gold);}
 }
 /* ---------- cool layer: fx canvas, vignette, deal, wiggle, intro ---------- */
@@ -253,11 +233,6 @@ header,#board{position:relative;z-index:3;}
 #introcard .lines p{margin:8px 0;}
 #introcard .tips{background:#f3ecd9;border-radius:12px;padding:10px 14px;text-align:left;font-size:14px;line-height:1.65;margin:12px 0;}
 #introcard .btn{font-size:18px;padding:12px 38px;margin-top:6px;}
-.thumbs{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0;}
-.thumb{position:relative;width:54px;height:76px;border-radius:8px;overflow:hidden;border:2px solid #2b3a42;}
-.thumb img{width:100%;height:100%;object-fit:cover;display:block;}
-.thumb button{position:absolute;top:0;right:0;background:#c0392b;color:#fff;border:none;border-radius:0 0 0 8px;cursor:pointer;font-size:13px;padding:2px 7px;}
-#drawer select{font-size:15px;padding:7px 9px;border-radius:10px;border:1px solid #bbb;max-width:100%;}
 /* ---------- the bit: splash + uncooperative play button ---------- */
 #splash{position:fixed;inset:0;z-index:95;display:flex;flex-direction:column;gap:12px;
   align-items:center;justify-content:center;padding:20px;
@@ -441,7 +416,7 @@ body[data-design="glass"] .slot{
 }
 .wchip img{width:100%;height:100%;object-fit:fill;display:block;pointer-events:none;}
 .wchip.big{width:168px;height:235px;border-radius:12px;font-size:0;}
-#drawer h2,#helpcard h2{font-family:Georgia, Palatino, serif;}
+#helpcard h2{font-family:Georgia, Palatino, serif;}
 .backswatch{background-size:cover;background-position:center;color:transparent;font-size:0;}
 .stockn{
   position:absolute;right:6px;bottom:6px;z-index:2;pointer-events:none;
@@ -545,36 +520,6 @@ body[data-scene]::after{
 
 <div id="draglayer"></div>
 <div id="hintbar"></div>
-
-<!-- BUILDER-ONLY: the style drawer below stays while building, but is removed from the final product -->
-<div id="drawer" role="dialog" aria-label="style settings">
-  <h2>🎨 Make it yours</h2>
-  <h3>Scene</h3>
-  <div class="swatchrow" id="scenes"></div>
-  <h3>Table</h3>
-  <div class="swatchrow" id="felts"></div>
-  <h3>Design</h3>
-  <div class="swatchrow" id="designs"></div>
-  <h3>Card backs</h3>
-  <div class="swatchrow" id="backs"></div>
-  <label>🖼️ Add family photos (they become card backs):<br>
-    <input type="file" id="photopick" accept="image/*">
-  </label>
-  <div class="thumbs" id="photodeck"></div>
-  <label>🎲 Surprise photo backs:
-    <select id="surprisepick">
-      <option value="off">Off</option>
-      <option value="game">New photo every game</option>
-      <option value="timed">Swap on a timer</option>
-    </select>
-  </label>
-  <label><input type="checkbox" id="sparklepick"> ✨ Floating sparkles</label>
-  <label><input type="checkbox" id="musicpick"> 🎵 Music-box tune</label>
-  <label>💌 Name on the title: <input type="text" id="namepick" maxlength="20" value="Mom"></label>
-  <div class="rowbtns">
-    <button class="btn" id="bCloseDrawer">Done ✓</button>
-  </div>
-</div>
 
 <div id="splash"><div class="big" id="splashbig"></div><div class="sub2" id="splashsub"></div></div>
 <div id="intro"><div id="introcard">
@@ -1054,7 +999,6 @@ class UI {
     this.startTime=null; this.timerId=null; this.won=false;
     this.drag=null;
     this.applyTheme(); this.applyName(); this.applyDesign();
-    this.buildDrawer();
     this.wire();
     this.lastSwap=0;
     this.newGame(false);
@@ -1607,7 +1551,6 @@ class UI {
       if(next==='table') this.theme=TABLES[this.lastFelt]?this.lastFelt:'emerald';
       else this.theme=next;
       store.set('theme', this.theme); this.applyTheme(); this.view.render(this); Sfx.click(); };
-    $('#bCloseDrawer').onclick=()=>$('#drawer').classList.remove('open');
     $('#bSound').onclick=()=>{ const m=Sfx.toggle(); $('#bSound').textContent=m?'SFX off':'SFX';
       if(m){ Ambience.duck(true); }
       else { const k=Ambience.kind; if(k) Ambience.start(k); Sfx.click(); } };
@@ -1615,7 +1558,6 @@ class UI {
     // Music button: silences only the music-box tune; SFX, ambience, whale, night-sky all keep playing
     $('#bMusic').onclick=()=>{ this.musicOn=!this.musicOn; store.set('musicOn',this.musicOn);
       $('#bMusic').textContent=this.musicOn?'Music':'Music off';
-      $('#musicpick').checked=this.musicOn;
       if(this.musicOn){ Sfx.ensure(); Music.start(); Sfx.click(); } else Music.stop(); };
     $('#bMusic').textContent=this.musicOn?'Music':'Music off';
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
@@ -1773,20 +1715,7 @@ class UI {
     };
     Sfx.flip(); step();
   }
-  /* ---------- Jason's mischief kit ---------- */
-  renderThumbs(){
-    const box=$('#photodeck'); box.innerHTML='';
-    this.photoDeck.forEach((url,i)=>{
-      const d=document.createElement('div'); d.className='thumb';
-      d.innerHTML=`<img src="${url}" alt="photo ${i+1}"><button aria-label="remove photo">×</button>`;
-      d.querySelector('button').onclick=()=>{ this.photoDeck.splice(i,1); store.set('photoDeck',this.photoDeck);
-        if(this.backPhoto===url){ this.backPhoto=null; store.set('backPhoto',null); }
-        this.renderThumbs(); this.applyTheme(); this.view.render(this); Sfx.click(); };
-      d.querySelector('img').onclick=()=>{ this.backPhoto=url; store.set('backPhoto',url);
-        this.applyTheme(); this.view.render(this); Sfx.flip(); };
-      box.appendChild(d);
-    });
-  }
+
   /* bundled photo backs: one random photo per card, reshuffled every game.
      Photos only on the green table — ocean/night scenes use their themed backs. */
   photoFor(id){
@@ -1875,7 +1804,6 @@ class UI {
     if(!DESIGNS[this.design]) this.design='classic';
     if(this.design==='classic') document.body.removeAttribute('data-design');
     else document.body.dataset.design=this.design;
-    document.querySelectorAll('#designs .designbtn').forEach(b=>b.classList.toggle('on',b.dataset.d===this.design));
   }
   applyTheme(){
     const T=TABLES[this.theme]||TABLES.emerald;
@@ -1889,9 +1817,6 @@ class UI {
     root.style.setProperty('--cardback-image',this.backPhoto?`url("${this.backPhoto}")`:`linear-gradient(135deg,${T.back1},${T.back2})`);
     if(T.scene) document.body.dataset.scene=T.scene; else delete document.body.dataset.scene;
     if(T.dark) document.body.dataset.uidark='1'; else delete document.body.dataset.uidark;
-    document.querySelectorAll('#felts .swatch').forEach(s=>s.classList.toggle('on',s.dataset.t===this.theme));
-    document.querySelectorAll('#scenes .scenebtn').forEach(s=>s.classList.toggle('on', s.dataset.scene===(T.scene||'table')));
-    document.querySelectorAll('#backs .backswatch').forEach(s=>s.classList.toggle('on',s.dataset.p===this.backPat&&!this.backPhoto));
     $('#rainfx').style.display=this.theme==='cabinrain'?'block':'none';
     Ambience.setForTable(this.theme);
     const still=$('#sceneStill');
@@ -1906,87 +1831,8 @@ class UI {
   }
   applyName(){
     $('#gametitle').innerHTML=`${esc(this.playerName)}'s Solitaire<small>for ${esc(this.playerName)}, from Jason</small>`;
-    $('#namepick').value=this.playerName;
   }
-  buildDrawer(){
-    const scenes=$('#scenes');
-    for(const S of [{id:'table',name:'Card table'},{id:'ocean',name:'Blue ocean'},{id:'night',name:'Night sky'}]){
-      const b=document.createElement('button'); b.className='scenebtn '+S.id; b.dataset.scene=S.id; b.textContent=S.name;
-      b.setAttribute('aria-label', S.name+' scene');
-      b.onclick=()=>{
-        this.backPinned=false; store.set('backPinned', false);
-        if(S.id==='table') this.theme=TABLES[this.lastFelt]?this.lastFelt:'emerald';
-        else this.theme=S.id;
-        store.set('theme', this.theme); this.applyTheme(); this.view.render(this); Sfx.click();
-      };
-      scenes.appendChild(b);
-    }
-    const felts=$('#felts');
-    for(const [key,T] of Object.entries(TABLES)){
-      if(T.scene) continue;
-      const b=document.createElement('button'); b.className='swatch'; b.dataset.t=key; b.title=T.name;
-      b.style.background=T.bg;
-      b.setAttribute('aria-label',T.name+' table');
-      b.onclick=()=>{
-        this.backPinned=false; store.set('backPinned', false);
-        this.theme=key; this.lastFelt=key; store.set('theme',key); store.set('lastFelt',key);
-        if(this.backPat==='ocean'||this.backPat==='night'){ this.backPat='burgundy'; store.set('backPat','burgundy'); }
-        this.applyTheme(); this.view.render(this); Sfx.click();
-      };
-      felts.appendChild(b);
-    }
-    const designs=$('#designs');
-    for(const [key,D] of Object.entries(DESIGNS)){
-      const b=document.createElement('button'); b.className='designbtn'; b.dataset.d=key; b.textContent=D.name;
-      b.setAttribute('aria-label',D.name+' design');
-      b.onclick=()=>{ this.design=key; store.set('design',key); this.applyDesign(); Sfx.click(); };
-      designs.appendChild(b);
-    }
-    const backs=$('#backs');
-    for(const [p,label] of [['burgundy','Wine'],['navy','Navy'],['forest','Forest'],['gold','Black and gold'],['ocean','Ocean'],['night','Night sky']]){
-      const b=document.createElement('button'); b.className='backswatch'; b.dataset.p=p; b.title=label+' card back';
-      b.style.backgroundImage=`url(${backURL(p)})`;
-      b.setAttribute('aria-label',label+' card back');
-      b.onclick=()=>{ this.backPinned=true; store.set('backPinned', true);
-        this.backPat=p; this.backPhoto=null; store.set('backPhoto',null); store.set('backPat',p);
-        this.applyTheme(); this.view.render(this); Sfx.click(); };
-      backs.appendChild(b);
-    }
-    this.renderThumbs();
-    $('#surprisepick').value=this.surprise;
-    $('#surprisepick').onchange=e=>{ this.surprise=e.target.value; store.set('surprise',this.surprise); Sfx.click();
-      if(this.surprise!=='off') this.pickSurprise(true); };
-    $('#sparklepick').checked=this.sparkles;
-    $('#sparklepick').onchange=e=>{ this.sparkles=e.target.checked; store.set('sparkles',this.sparkles); Sfx.click(); };
-    $('#musicpick').checked=this.musicOn;
-    $('#musicpick').onchange=e=>{ this.musicOn=e.target.checked; store.set('musicOn',this.musicOn);
-      $('#bMusic').textContent=this.musicOn?'Music':'Music off';
-      if(this.musicOn){ Sfx.ensure(); Music.start(); } else Music.stop(); };
-    $('#photopick').onchange=e=>{
-      const f=e.target.files[0]; if(!f) return;
-      const img=new Image();
-      img.onload=()=>{
-        const cv=document.createElement('canvas'); const S=320;
-        cv.width=S; cv.height=Math.round(S*1.42);
-        const cx=cv.getContext('2d');
-        const sc=Math.max(cv.width/img.width, cv.height/img.height);
-        cx.drawImage(img,(cv.width-img.width*sc)/2,(cv.height-img.height*sc)/2,img.width*sc,img.height*sc);
-        const url=cv.toDataURL('image/jpeg',0.82);
-        if(this.photoDeck.length>=12){ this.say('Photo deck is full (12 max) — remove one first.'); return; }
-        this.photoDeck.push(url); store.set('photoDeck',this.photoDeck);
-        this.backPhoto=url; store.set('backPhoto',url);
-        this.renderThumbs(); this.applyTheme(); this.view.render(this);
-        this.say('Photo added to the deck! 📸'); Sfx.flip();
-        e.target.value='';
-      };
-      img.src=URL.createObjectURL(f);
-    };
-    $('#namepick').onchange=e=>{
-      const v=e.target.value.trim()||'Mom';
-      this.playerName=v; store.set('playerName',v); this.applyName(); Sfx.click();
-    };
-    this.applyTheme();
-  }
+
 }
 /* table materials: SVG-turbulence grain/vein/speckle over tinted bases */
 const GRAIN='url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'400\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.012 0.16\' numOctaves=\'4\' seed=\'8\' stitchTiles=\'stitch\'/%3E%3CfeColorMatrix type=\'matrix\' values=\'0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.55 0.55 0.55 0 0\'/%3E%3C/filter%3E%3Crect width=\'400\' height=\'400\' filter=\'url(%23n)\' opacity=\'0.5\'/%3E%3C/svg%3E")';
