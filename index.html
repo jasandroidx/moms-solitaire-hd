@@ -660,12 +660,13 @@ const Ambience = {
 };
 /* Voice clips: mp3 files in sfx/, mapped in CUSTOM.vox. Lazy-loaded, unlocked on first tap. */
 const Vox = {
-  cache:{}, unlocked:false,
+  cache:{}, unlocked:false, _busyUntil:0,
   unlock(){ if(this.unlocked) return; this.unlocked=true;
     const v=CUSTOM.vox||{};
     for(const k of Object.keys(v)){ const f=v[k]; (Array.isArray(f)?f:[f]).forEach(x=>{ if(typeof x==='string') this.load(x); }); } },
   load(file){ if(!file||this.cache[file]) return;
     try{ const a=new Audio('sfx/'+file); a.preload='auto'; this.cache[file]=a; }catch(e){} },
+  busy(){ return Date.now()<this._busyUntil; },
   play(key, idx, vol){
     if(Sfx.muted) return; this.unlock();
     let f=(CUSTOM.vox||{})[key]; if(!f) return;
@@ -673,7 +674,19 @@ const Vox = {
     if(!f) return;
     this.load(f);
     const a=this.cache[f]; if(!a) return;
-    try{ a.volume=(vol==null?1:vol); a.currentTime=0; const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+    try{
+      a.volume=(vol==null?1:vol); a.currentTime=0;
+      const p=a.play(); if(p&&p.catch) p.catch(()=>{});
+      // mark long clips busy so sparse SFX don't stack over them
+      const dur=(isFinite(a.duration)&&a.duration>0)?a.duration:2.5;
+      if(dur>1.2) this._busyUntil=Math.max(this._busyUntil, Date.now()+Math.min(dur,8)*1000);
+    }catch(e){}
+  },
+  /* Sparse play: default ~1 in 10. Skips if muted, missing, or a long clip is still going. */
+  maybe(key, chance, vol){
+    if(Sfx.muted||this.busy()) return false;
+    if(Math.random()>=(chance==null?0.1:chance)) return false;
+    this.play(key, 0, vol); return true;
   }
 };
 /* Ocean whale and night-sky shooting star. The still stays up; the clip plays over it, then goes away. */
@@ -938,6 +951,14 @@ const CUSTOM = {
     wahwah: 'sad-trombone-fail.mp3',     // anti-gravity win gag (same file as the illegal-move trombone)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
+    // ElevenLabs SFX (sparse via Vox.maybe — ~1/10 unless noted)
+    intro: 'lah-lah-solitaire-intro.mp3',  // epic announcer — ALWAYS on splash/logo reveal (once per open)
+    cardPlace: 'card-place.mp3',           // successful place (~10%)
+    ooooh: 'crowd-ooooh.mp3',              // ace/king/foundation peaks (~10%)
+    aaaah: 'crowd-aaaah.mp3',              // foundation / big place (~10%)
+    cheer: 'audience-cheer-clap.mp3',      // rare place celebration (~10%, not stacked with cardPlace)
+    winJingle: 'win-jingle.mp3',           // win layer (always — wins are rare)
+    dealWhoosh: 'deal-whoosh.mp3',         // deal / floatUp (~10% or once per deal)
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
@@ -1055,6 +1076,7 @@ class UI {
     setTimeout(()=>sassy.classList.add('hide'),260);
     const mess=$('#mess'), cards=[...mess.children];
     Sfx.riffle();
+    Vox.maybe('dealWhoosh', 0.1);
     cards.forEach((el,i)=>{ // all fly up into one neat stack
       el.style.transitionDelay=(i*11)+'ms';
       el.style.left='calc(50% - 27px)'; el.style.top='calc(40% - 38px)';
@@ -1140,8 +1162,18 @@ class UI {
     const flips=this.eng.state.lastFlips||[]; this.eng.state.lastFlips=[];
     if(flips.some(c=>c.suit==='spades'&&c.rank===1)) Vox.play('ace'); // ♠ ace turned over
     if(!this._kingHeartsPlayed&&flips.some(c=>c.suit==='hearts'&&c.rank===13)){ this._kingHeartsPlayed=true; Vox.play('kingHearts'); } // 👑 first K♥ flip
+    // sparse crowd reaction on ace/king flips (in addition to dedicated VO)
+    if(flips.some(c=>c.rank===1||c.rank===13)) Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1);
     if(msg) this.say(msg);
     if(this.eng.isWon()) this.onWin();
+  }
+  /* Sparse ElevenLabs place SFX: ~10% cardPlace OR cheer (not both); foundation gets slight cheer bias. Soft Sfx.flip stays. */
+  placeSfx(toFoundation){
+    if(Vox.busy()) return;
+    if(Math.random()>=0.1) return;
+    if(toFoundation && Math.random()<0.45) Vox.play('cheer');
+    else if(!toFoundation && Math.random()<0.25) Vox.play('cheer');
+    else Vox.play('cardPlace');
   }
   onWin(){
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
@@ -1149,7 +1181,7 @@ class UI {
     const secs=Math.floor((Date.now()-this.startTime)/1000);
     const bk=this.stats.best[this.drawCount]||Infinity;
     if(secs<bk){ this.stats.best[this.drawCount]=secs; store.set('stats',this.stats); }
-    Sfx.win(); Vox.play('win'); this.winShow();
+    Sfx.win(); Vox.play('win'); Vox.play('winJingle'); this.winShow();
     if(this.stats.wins===1) setTimeout(()=>this.bonusVideo(),4500); // first win ever: bonus video
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     $('#winstats').textContent=`${this.tick()} · ${this.eng.state.moves} moves · Draw ${this.drawCount}`+
@@ -1223,6 +1255,7 @@ class UI {
   /* soft rising shimmer for anti-gravity moments (replaces the sad trombone) */
   floatUp(){
     Sfx.ensure();
+    Vox.maybe('dealWhoosh', 0.1);
     if(Sfx.ctx&&!Sfx.muted){ const ctx=Sfx.ctx, t=ctx.currentTime;
       [0,4,7].forEach((st,k)=>{
         const o=ctx.createOscillator(), g=ctx.createGain();
@@ -1659,10 +1692,10 @@ class UI {
       const z=pile.dataset.zone;
       if(z==='foundation'&&d.seq.length===1){
         const r=this.eng.moveToFoundation(d.loc);
-        if(r.ok){ Sfx.flip(); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); done=true; }
+        if(r.ok){ Sfx.flip(); this.placeSfx(true); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); done=true; }
       } else if(z==='tableau'){
         const r=this.eng.moveToTableau(d.loc,+pile.dataset.col);
-        if(r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
+        if(r.ok){ Sfx.flip(); this.placeSfx(false); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
       }
     }
     if(!done){ Sfx.bad(); Vox.play('illegal'); this.view.render(this); }
@@ -1680,8 +1713,9 @@ class UI {
       if(loc.zone==='foundation') r=this.eng.moveToFoundation(sel);
       else if(loc.zone==='tableau') r=this.eng.moveToTableau(sel,loc.col);
       else r={ok:false};
-      if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
-        if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
+      if(r&&r.ok){ Sfx.flip(); this.placeSfx(loc.zone==='foundation'); this.view.selected=null; this.afterMove('Moved.');
+        if(loc.zone==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
+        else this.commentate('tableau', r.cards[0]); }
       else { Sfx.bad(); Vox.play('illegal'); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
@@ -1697,8 +1731,9 @@ class UI {
     const z=pile.dataset.zone; let r;
     if(z==='foundation') r=this.eng.moveToFoundation(sel);
     else r=this.eng.moveToTableau(sel,+pile.dataset.col);
-    if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
-      if(z==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
+    if(r&&r.ok){ Sfx.flip(); this.placeSfx(z==='foundation'); this.view.selected=null; this.afterMove('Moved.');
+      if(z==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
+      else this.commentate('tableau', r.cards[0]); }
     else { Sfx.bad(); Vox.play('illegal'); this.say('That move is not legal.'); }
   }
   doHint(){
@@ -1746,6 +1781,8 @@ class UI {
     });
     $('#splashsub').textContent=CUSTOM.splashSub;
     const splash=$('#splash'); splash.classList.remove('hide');
+    // Epic "LAH LAH SOLITAIIIIRRREEEE!!!" as the logo/splash letters appear (once per session open)
+    if(!this._introPlayed){ this._introPlayed=true; Sfx.ensure(); Vox.play('intro'); }
     setTimeout(()=>splash.classList.add('hide'), 2400);
     $('#intro').classList.remove('hide');
     // the button that refuses to work — it flees to a corner, she chases it.
