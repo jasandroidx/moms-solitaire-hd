@@ -90,7 +90,7 @@ class GameEngine {
   // ---- helpers ----
   topOf(col) { return col[col.length - 1]; }
 
-  // face-up run at the top of a tableau column (the longest legal draggable sequence)
+  // face-up run at the top of a tableau column (the draggable sequence)
   movableSequence(colIdx) {
     const col = this.state.tableau[colIdx];
     let i = col.length - 1;
@@ -98,16 +98,6 @@ class GameEngine {
            col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
     if (!col[i] || !col[i].faceUp) return [];
     return col.slice(i);
-  }
-
-  // Klondike partial stack: cards from fromIdx down to the column top, if inside the movable run
-  sequenceFrom(colIdx, fromIdx) {
-    const col = this.state.tableau[colIdx];
-    const full = this.movableSequence(colIdx);
-    if (!full.length) return [];
-    const start = col.length - full.length;
-    if (fromIdx == null || fromIdx < start || fromIdx >= col.length) return full;
-    return col.slice(fromIdx);
   }
 
   canPlaceOnTableau(cards, colIdx) {
@@ -167,17 +157,12 @@ class GameEngine {
     return { ok: true, recycled: false };
   }
 
-  // from: {zone:'waste'} | {zone:'tableau', col, idx?}
-  // Only the exposed top card of a column can go to foundation (idx must be the top if given).
+  // from: {zone:'waste'} | {zone:'tableau', col}
   moveToFoundation(from) {
     const s = this.state;
     let card;
     if (from.zone === 'waste') card = this.topOf(s.waste);
-    else {
-      const col = s.tableau[from.col];
-      if (from.idx != null && from.idx !== col.length - 1) return { ok: false };
-      card = this.topOf(col);
-    }
+    else card = this.topOf(s.tableau[from.col]);
     if (!card || !card.faceUp || !this.canPlaceOnFoundation(card)) return { ok: false };
     this._pushHistory();
     if (from.zone === 'waste') s.waste.pop(); else s.tableau[from.col].pop();
@@ -186,13 +171,19 @@ class GameEngine {
     return { ok: true, card };
   }
 
-  // move a tableau subsequence (or waste top) onto a tableau column.
-  // from.idx (optional) picks a partial stack starting at that card — normal Klondike.
+  // move the movable sequence of a tableau column (or the waste top) onto a tableau column.
+  // from may carry idx (the grabbed card): moves that card and everything below it,
+  // not necessarily the whole movable run. Without idx, moves the full run (legacy).
   moveToTableau(from, toCol) {
     const s = this.state;
     let cards;
     if (from.zone === 'waste') { const t = this.topOf(s.waste); cards = t && t.faceUp ? [t] : []; }
-    else cards = this.sequenceFrom(from.col, from.idx);
+    else {
+      const col = s.tableau[from.col];
+      const runStart = col.length - this.movableSequence(from.col).length;
+      const fromIdx = (from.idx != null && from.idx >= runStart) ? from.idx : runStart;
+      cards = col.slice(fromIdx);
+    }
     if (!cards.length) return { ok: false };
     if (from.zone === 'tableau' && from.col === toCol) return { ok: false };
     if (!this.canPlaceOnTableau(cards, toCol)) return { ok: false };
@@ -210,7 +201,7 @@ class GameEngine {
     let card, seq;
     if (loc.zone === 'waste') { card = this.topOf(s.waste); seq = card && card.faceUp ? [card] : []; }
     else if (loc.zone === 'foundation') return { ok: false };
-    else { seq = this.sequenceFrom(loc.col, loc.idx); card = seq[0]; }
+    else { seq = this.movableSequence(loc.col); card = seq[0]; }
     if (!card) return { ok: false };
     // single cards prefer foundation
     if (seq.length === 1 && this.canPlaceOnFoundation(card)) return this.moveToFoundation(loc);
@@ -273,79 +264,25 @@ class GameEngine {
     return null;
   }
 
-  // ---- auto-complete (Windows Solitaire–style) ----
-  // All tableau cards face-up, and the rest can finish by foundation moves (+ draws) only.
+  // ---- auto-complete ----
   canAutoComplete() {
     const s = this.state;
-    if (!s || !s.tableau.every(col => col.every(c => c.faceUp))) return false;
-    return this._canFinishByFoundationsOnly();
+    if (s.stock.length || s.waste.length) return false;
+    return s.tableau.every(col => col.every(c => c.faceUp));
   }
 
-  // Peek next auto move without mutating (for fly animation source rects).
-  peekAutoStep() {
-    const s = this.state;
-    let best = null;
-    for (let c = 0; c < s.tableau.length; c++) {
-      const t = this.topOf(s.tableau[c]);
-      if (t && t.faceUp && this.canPlaceOnFoundation(t)) {
-        if (!best || t.rank < best.card.rank)
-          best = { kind: 'foundation', from: { zone: 'tableau', col: c }, card: t };
-      }
-    }
-    const w = this.topOf(s.waste);
-    if (w && this.canPlaceOnFoundation(w)) {
-      if (!best || w.rank < best.card.rank)
-        best = { kind: 'foundation', from: { zone: 'waste' }, card: w };
-    }
-    if (best) return best;
-    if (s.stock.length) return { kind: 'draw' };
-    if (s.waste.length) return { kind: 'recycle' };
-    return null;
-  }
-
-  // One auto-complete tick: foundation place, draw, or recycle. Any legal foundation
-  // move (not only "safe") — once everything is face-up, finishing is just filing home.
   autoStep() {
-    const peek = this.peekAutoStep();
-    if (!peek) return { ok: false };
-    if (peek.kind === 'foundation') {
-      const r = this.moveToFoundation(peek.from);
-      return r.ok
-        ? { ok: true, card: peek.card, from: peek.from, to: { zone: 'foundation', suit: peek.card.suit } }
-        : { ok: false };
-    }
-    const r = this.draw();
-    if (!r.ok) return { ok: false };
-    return { ok: true, drew: true, recycled: !!r.recycled };
-  }
-
-  // Simulate foundation-only play (+ draw/recycle) on a clone. Stops if a full
-  // waste recycle cycle makes no foundation progress (avoids infinite loops).
-  _canFinishByFoundationsOnly() {
-    const sim = new GameEngine(this.variant);
-    sim.state = cloneState(this.state);
-    sim.history = [];
-    let guard = 0;
-    let recycledWithoutProgress = false;
-    while (!sim.isWon() && guard++ < 260) {
-      const peek = sim.peekAutoStep();
-      if (!peek) return false;
-      if (peek.kind === 'foundation') {
-        const r = sim.moveToFoundation(peek.from);
-        if (!r.ok) return false;
-        recycledWithoutProgress = false;
-        continue;
+    const s = this.state;
+    for (let c = 0; c < s.tableau.length; c++) {
+      const col = s.tableau[c];
+      if (!col.length) continue;
+      const t = this.topOf(col);
+      if (this.canPlaceOnFoundation(t) && this.isSafeForFoundation(t)) {
+        const r = this.moveToFoundation({ zone: 'tableau', col: c });
+        return r.ok ? { ok: true, card: t } : { ok: false };
       }
-      if (peek.kind === 'draw') {
-        sim.draw();
-        continue;
-      }
-      // recycle
-      if (recycledWithoutProgress) return false;
-      recycledWithoutProgress = true;
-      sim.draw();
     }
-    return sim.isWon();
+    return { ok: false };
   }
 
   isWon() {
