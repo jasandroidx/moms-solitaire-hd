@@ -14,6 +14,7 @@ Synthesized `Sfx.*` (click/flip/bad/win/fanfare/etc.) are WebAudio tones — sof
 |------|------------------|------|--------|
 | `audience-cheer-clap.mp3` | `cheer` | Splash/logo reveal (with `Sfx.fanfare`); also rare place celebration | Splash **ALWAYS** once; places ~10% roll then subset cheer |
 | `card-place.mp3` | `cardPlace` | Successful tableau/foundation place via `placeSfx()` | ~10% (mutually exclusive vs cheer) |
+| `sad-trombone-fail.mp3` | `illegal` | Illegal move reject via `rejectSfx()` | **~10%** (silent most rejects) |
 | `crowd-ooooh.mp3` | `ooooh` | Foundation place peaks; ace/king flips in `afterMove` | ~10% |
 | `crowd-aaaah.mp3` | `aaaah` | Same peaks (coin-flip vs ooooh) | ~10% |
 | `deal-whoosh.mp3` | `dealWhoosh` | `messFly` deal + `floatUp` / new deal | ~10% |
@@ -29,3 +30,4 @@ Skip wiring `marching-band.mp3` (user already has it / synth bed).
 - **Reactions:** foundation success + ace/king flips → `Vox.maybe('ooooh'|'aaaah', 0.1)`
 - **Deal:** `messFly` / `floatUp` → `Vox.maybe('dealWhoosh', 0.1)`
 - **Win:** `onWin` → `Vox.play('winJingle')` with `Vox.play('win')`
+- **Illegal move:** drag/tap/pile reject → `this.rejectSfx()` (~1/10 `Sfx.bad` + trombone)

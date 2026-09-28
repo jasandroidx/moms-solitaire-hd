@@ -874,8 +874,10 @@ class Renderer {
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=col.length-this.eng.movableSequence(ci).length)
-          el.classList.add('selected');
+        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci){
+          const from=this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length;
+          if(idx>=from) el.classList.add('selected');
+        }
         if(this.hintCard===c.id) el.classList.add('hintglow');
         colEl.appendChild(el);
         step=c.faceUp?offU:offD;
@@ -928,7 +930,7 @@ const CUSTOM = {
   // THE BIT: big splash words, then a play button that refuses to work
   splashText: "LA LA SOLITAIRE!!!!!",
   splashSub: "🎺 a Jason production 🎺",
-  playTeaseClicks: 4, // dead clicks (corner chases) before it gives in
+  playTeaseClicks: 2, // dead clicks before give-in: 1 = first Play starts; 2 = one tease then start
   playTease: ["...", "hey.", "patience, patience…"],
   playGiveIn: "OUCH! Alright, alright — keep your pants on! 😂",
   // THE COLD OPEN: messy pile of face-down cards; she clicks; sass; they fly up and deal
@@ -936,7 +938,7 @@ const CUSTOM = {
   // VOICE CLIPS: mp3s live in the sfx/ folder next to index.html — swap filenames, change the moments
   vox: {
     hint: 'youre-the-smartest-person-in-the-room-right-now.mp3', // she asks for a hint
-    illegal: 'sad-trombone-fail.mp3',                             // she tries a move that ain't legal
+    illegal: 'sad-trombone-fail.mp3',                             // illegal move — via rejectSfx() ~1/10 only
     win: 'wow-m.mp3',                                            // she wins the whole game
     idle: ['whatistheholdup.mp3','impatient-bender.mp3','Times_up.mp3'], // escalating idle nags
     boing: 'boing.mp3',                    // the Play button flees
@@ -1166,6 +1168,11 @@ class UI {
     if(flips.some(c=>c.rank===1||c.rank===13)) Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1);
     if(msg) this.say(msg);
     if(this.eng.isWon()) this.onWin();
+  }
+  /* Illegal-move womp/fail: sparse (~1 in 10). Most rejects stay silent. */
+  rejectSfx(){
+    if(Math.random()>=0.1) return;
+    Sfx.bad(); Vox.play('illegal');
   }
   /* Sparse ElevenLabs place SFX: ~10% cardPlace OR cheer (not both); foundation gets slight cheer bias. Soft Sfx.flip stays. */
   placeSfx(toFoundation){
@@ -1638,7 +1645,8 @@ class UI {
   startDrag(d){
     d.active=true;
     const layer=$('#draglayer'); layer.innerHTML='';
-    const seq=d.loc.zone==='waste'?[this.eng.topOf(this.eng.state.waste)]:this.eng.movableSequence(d.loc.col);
+    // Klondike: drag from the clicked face-up card down (partial stack), not always the full run
+    const seq=d.loc.zone==='waste'?[this.eng.topOf(this.eng.state.waste)]:this.eng.sequenceFrom(d.loc.col, d.loc.idx);
     const r=d.el.getBoundingClientRect();
     const cw=r.width, offU=cw*0.30;
     d.ghosts=seq.map((c,i)=>{
@@ -1703,7 +1711,7 @@ class UI {
         if(r.ok){ Sfx.flip(); this.placeSfx(false); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
       }
     }
-    if(!done){ Sfx.bad(); Vox.play('illegal'); this.view.render(this); }
+    if(!done){ this.rejectSfx(); this.view.render(this); }
   }
   onTap(cardEl,loc){
     const now=Date.now();
@@ -1721,14 +1729,18 @@ class UI {
       if(r&&r.ok){ Sfx.flip(); this.placeSfx(loc.zone==='foundation'); this.view.selected=null; this.afterMove('Moved.');
         if(loc.zone==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
         else this.commentate('tableau', r.cards[0]); }
-      else { Sfx.bad(); Vox.play('illegal'); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
+      else { this.rejectSfx(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
     if(loc.zone==='foundation') return;
     // else select the sequence (R1)
     if(loc.zone==='waste'){ this.view.selected={zone:'waste'}; }
-    else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col}; }
+    else if(loc.zone==='tableau'){
+      const seq=this.eng.movableSequence(loc.col);
+      if(seq.length && loc.idx>=colTopIdx(this.eng.state.tableau[loc.col],seq))
+        this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx};
+    }
     this.view.render(this); Sfx.click();
   }
   onPileTap(pile){
@@ -1739,7 +1751,7 @@ class UI {
     if(r&&r.ok){ Sfx.flip(); this.placeSfx(z==='foundation'); this.view.selected=null; this.afterMove('Moved.');
       if(z==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
       else this.commentate('tableau', r.cards[0]); }
-    else { Sfx.bad(); Vox.play('illegal'); this.say('That move is not legal.'); }
+    else { this.rejectSfx(); this.say('That move is not legal.'); }
   }
   doHint(){
     if(this.messy) return;
@@ -1790,8 +1802,8 @@ class UI {
     if(!this._introPlayed){ this._introPlayed=true; Sfx.ensure(); Sfx.fanfare(); Vox.play('cheer'); }
     setTimeout(()=>splash.classList.add('hide'), 2400);
     $('#intro').classList.remove('hide');
-    // the button that refuses to work — it flees to a corner, she chases it.
-    // click 1: silent dodge. click 2: 🎵 can't touch this. click 3: ohhh, you gotta be quicker than that. click 4: it gives in.
+    // Play tease: at most ONE corner dodge, then the next click starts (playTeaseClicks=2 → 1 tease).
+    // Set playTeaseClicks to 1 to start on the first click with no chase.
     let clicks=0, chases=0;
     const btn=$('#bPlay'); btn.textContent='▶ Play';
     const corner=()=>{
@@ -1813,8 +1825,9 @@ class UI {
         btn.style.transition='left .16s ease-out, top .16s ease-out, transform .16s';
         btn.style.left=s.l+'px'; btn.style.top=s.t+'px';
         btn.style.transform=`rotate(${(Math.random()*18-9)|0}deg) scale(${Math.max(.55, 1-chases*.12)})`;
-        if(clicks===2){ Vox.play('cantTouch'); this.say("🎵 Can't touch this!"); }
-        else if(clicks===3){ Vox.play('quicker'); this.say("Ohhh, you gotta be quicker than that!"); }
+        Vox.play('boing');
+        const line=(CUSTOM.playTease&&CUSTOM.playTease[0])||'...';
+        this.say(line);
         return;
       }
       btn.onclick=null;
