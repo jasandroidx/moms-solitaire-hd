@@ -1939,11 +1939,35 @@ const Radio={
     this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(cb)cb(); }).catch(()=>{}); },
   stop(){ this.on=false; if(this.el) this.el.classList.remove('on'); if(this.audio) this.audio.pause(); }
 };
-/* daily horoscope scroll: free Ohmanda API, sign remembered, reading cached per day */
+/* daily horoscope scroll: local day-seeded readings (Ohmanda API is dead / TLS broken;
+   free public APIs lack CORS for file:// Chromebook opens). Sign remembered, cached per day. */
 const Scope={
   signs:[['aries','♈','Aries'],['taurus','♉','Taurus'],['gemini','♊','Gemini'],['cancer','♋','Cancer'],['leo','♌','Leo'],['virgo','♍','Virgo'],['libra','♎','Libra'],['scorpio','♏','Scorpio'],['sagittarius','♐','Sagittarius'],['capricorn','♑','Capricorn'],['aquarius','♒','Aquarius'],['pisces','♓','Pisces']],
+  /* warm, mom-friendly stubs — a few per sign; pick by date so it changes daily */
+  pool:{
+    aries:['A spark of courage finds you today — trust your first instinct and take one brave little step.','Energy runs high; channel it into something kind for yourself or someone you love.','A fresh start is whispering your name. Answer with a smile and a yes.'],
+    taurus:['Comfort and steady progress go hand in hand today. Savor the small pleasures.','Patience pays off — something you have been tending quietly is about to bloom.','Treat yourself gently. Soft music, a warm drink, and one finished chore feel like luxury.'],
+    gemini:['A cheerful chat brightens the day. Reach out — someone is glad to hear from you.','Curiosity is your friend. Try a tiny new thing and see where it leads.','Words flow easily. A note, a joke, or a kind text lands just right.'],
+    cancer:['Home and heart take center stage. Nest a little; you deserve the cozy.','Feelings run deep and true — honor them with a quiet moment for yourself.','Someone close appreciates your care more than they say. Your warmth matters.'],
+    leo:['You shine without trying. Let a little pride in a job well done light your afternoon.','Generosity comes naturally — a small kindness comes back around.','Playfulness lifts the day. Laugh out loud; it suits you.'],
+    virgo:['Things settle into a gentle routine, and that is a gift. Detail by detail, you are making real progress — do not be too hard on yourself if it is not perfect yet.','Your careful eye spots what others miss. One tidy corner or finished list will feel wonderfully satisfying today.','Quiet competence is your superpower. Take it one neat step at a time; the results will show soon.','A practical kindness — to yourself or a loved one — sets the tone. Order brings peace, and peace brings joy.'],
+    libra:['Balance finds you when you pause for beauty — a flower, a song, a fair compromise.','Harmony loves company. A shared moment smooths any rough edges.','Choose the kind option. Grace looks good on you today.'],
+    scorpio:['Depth and loyalty serve you well. Trust what you already know in your bones.','A private win is still a win. Keep a little magic just for you.','Intensity softens into insight — you see the heart of the matter clearly.'],
+    sagittarius:['Adventure can be a walk around the block with fresh eyes. Stay open.','Optimism is contagious today. Share a hopeful thought and watch it spread.','A bigger picture lifts your mood. Look up — the sky agrees with you.'],
+    capricorn:['Steady effort earns quiet respect, including your own. Keep going.','Structure frees you — a simple plan turns the day into something solid.','Ambition can be gentle: one responsible step, then a well-earned rest.'],
+    aquarius:['A bright idea arrives sideways. Welcome the unusual with a grin.','Friendship and freedom mix well today. Be yourself; your people get it.','Something progressive and kind wants your attention — give it a little time.'],
+    pisces:['Dreams and intuition color the day softly. Follow the feeling that feels like home.','Compassion is your compass. A tender gesture means more than you know.','Art, music, or a quiet daydream restores you. Let the world blur for a minute.']
+  },
   pop:null,
   today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
+  /* stable pick from the sign's pool using today's date */
+  pick(sign){
+    const list=this.pool[sign]||this.pool.virgo;
+    const key=this.today()+'|'+sign;
+    let h=2166136261;
+    for(let i=0;i<key.length;i++){ h^=key.charCodeAt(i); h=Math.imul(h,16777619); }
+    return list[Math.abs(h)%list.length];
+  },
   open(){ Sfx.click();
     this.pop=$('#scopePop'); this.pop.classList.add('show');
     this.show('virgo'); // mom's sign — no picker
@@ -1952,14 +1976,26 @@ const Scope={
   show(sign){
     const box=this.pop.querySelector('.scope-body'); box.innerHTML='';
     const cached=store.get('scopeCache',null);
-    if(cached&&cached.date===this.today()&&cached.sign===sign) return this.render(sign,cached.date,cached.text);
+    if(cached&&cached.date===this.today()&&cached.sign===sign&&cached.text)
+      return this.render(sign,cached.date,cached.text);
+    const finish=text=>{
+      store.set('scopeCache',{date:this.today(),sign:sign,text:text});
+      this.render(sign,this.today(),text);
+    };
+    const local=()=>finish(this.pick(sign));
+    // file:// (mom's Chromebook) cannot use cross-origin APIs — serve local stubs instantly
+    if(typeof location!=='undefined' && location.protocol==='file:') return local();
+    // http(s): try free public API (no key); fall back to local on CORS / offline / errors
     const h=document.createElement('div'); h.className='scope-title'; h.textContent='🔮 Consulting the stars…'; box.appendChild(h);
-    fetch('https://ohmanda.com/api/horoscope/'+sign).then(r=>r.json()).then(j=>{
-      if(!j||!j.horoscope) throw 0;
-      store.set('scopeCache',{date:this.today(),sign:sign,text:j.horoscope});
-      this.render(sign,j.date||this.today(),j.horoscope);
-    }).catch(()=>{ box.innerHTML=''; const t=document.createElement('div'); t.className='scope-title';
-      t.textContent='✨ The stars are quiet right now — try again in a bit. ✨'; box.appendChild(t); });
+    const api='https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign='+encodeURIComponent(sign)+'&day=TODAY';
+    let done=false;
+    const once=fn=>{ if(done) return; done=true; fn(); };
+    const t=setTimeout(()=>once(local),2500);
+    fetch(api).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(j=>{
+      const text=j&&j.data&&j.data.horoscope;
+      if(!text) throw 0;
+      clearTimeout(t); once(()=>finish(text));
+    }).catch(()=>{ clearTimeout(t); once(local); });
   },
   render(sign,date,text){
     const meta=this.signs.find(s=>s[0]===sign);
