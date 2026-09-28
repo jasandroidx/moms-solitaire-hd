@@ -273,25 +273,79 @@ class GameEngine {
     return null;
   }
 
-  // ---- auto-complete ----
+  // ---- auto-complete (Windows Solitaire–style) ----
+  // All tableau cards face-up, and the rest can finish by foundation moves (+ draws) only.
   canAutoComplete() {
     const s = this.state;
-    if (s.stock.length || s.waste.length) return false;
-    return s.tableau.every(col => col.every(c => c.faceUp));
+    if (!s || !s.tableau.every(col => col.every(c => c.faceUp))) return false;
+    return this._canFinishByFoundationsOnly();
   }
 
-  autoStep() {
+  // Peek next auto move without mutating (for fly animation source rects).
+  peekAutoStep() {
     const s = this.state;
+    let best = null;
     for (let c = 0; c < s.tableau.length; c++) {
-      const col = s.tableau[c];
-      if (!col.length) continue;
-      const t = this.topOf(col);
-      if (this.canPlaceOnFoundation(t) && this.isSafeForFoundation(t)) {
-        const r = this.moveToFoundation({ zone: 'tableau', col: c });
-        return r.ok ? { ok: true, card: t } : { ok: false };
+      const t = this.topOf(s.tableau[c]);
+      if (t && t.faceUp && this.canPlaceOnFoundation(t)) {
+        if (!best || t.rank < best.card.rank)
+          best = { kind: 'foundation', from: { zone: 'tableau', col: c }, card: t };
       }
     }
-    return { ok: false };
+    const w = this.topOf(s.waste);
+    if (w && this.canPlaceOnFoundation(w)) {
+      if (!best || w.rank < best.card.rank)
+        best = { kind: 'foundation', from: { zone: 'waste' }, card: w };
+    }
+    if (best) return best;
+    if (s.stock.length) return { kind: 'draw' };
+    if (s.waste.length) return { kind: 'recycle' };
+    return null;
+  }
+
+  // One auto-complete tick: foundation place, draw, or recycle. Any legal foundation
+  // move (not only "safe") — once everything is face-up, finishing is just filing home.
+  autoStep() {
+    const peek = this.peekAutoStep();
+    if (!peek) return { ok: false };
+    if (peek.kind === 'foundation') {
+      const r = this.moveToFoundation(peek.from);
+      return r.ok
+        ? { ok: true, card: peek.card, from: peek.from, to: { zone: 'foundation', suit: peek.card.suit } }
+        : { ok: false };
+    }
+    const r = this.draw();
+    if (!r.ok) return { ok: false };
+    return { ok: true, drew: true, recycled: !!r.recycled };
+  }
+
+  // Simulate foundation-only play (+ draw/recycle) on a clone. Stops if a full
+  // waste recycle cycle makes no foundation progress (avoids infinite loops).
+  _canFinishByFoundationsOnly() {
+    const sim = new GameEngine(this.variant);
+    sim.state = cloneState(this.state);
+    sim.history = [];
+    let guard = 0;
+    let recycledWithoutProgress = false;
+    while (!sim.isWon() && guard++ < 260) {
+      const peek = sim.peekAutoStep();
+      if (!peek) return false;
+      if (peek.kind === 'foundation') {
+        const r = sim.moveToFoundation(peek.from);
+        if (!r.ok) return false;
+        recycledWithoutProgress = false;
+        continue;
+      }
+      if (peek.kind === 'draw') {
+        sim.draw();
+        continue;
+      }
+      // recycle
+      if (recycledWithoutProgress) return false;
+      recycledWithoutProgress = true;
+      sim.draw();
+    }
+    return sim.isWon();
   }
 
   isWon() {

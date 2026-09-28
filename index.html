@@ -98,6 +98,9 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 /* drag layer */
 #draglayer{position:fixed;left:0;top:0;pointer-events:none;z-index:50;}
 #draglayer .card{position:absolute;}
+.card.autofly{position:fixed;z-index:85;pointer-events:none;transition:left .16s ease-out, top .16s ease-out, transform .16s ease-out;
+  box-shadow:0 10px 28px rgba(0,0,0,.45);}
+@media (prefers-reduced-motion:reduce){.card.autofly{transition:none;}}
 /* ---------- win overlay ---------- */
 #winoverlay{
   position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
@@ -1043,6 +1046,7 @@ class UI {
     this.eng.state={stock:[],waste:[],foundations,tableau:[[],[],[],[],[],[],[]],drawCount:this.drawCount,moves:0};
     this.eng.history=[];
     this.messy=true; this.messFlying=false; this._flew=false;
+    this._autoRunning=false; $('#draglayer').innerHTML='';
     this.view.selected=null; this.view.hintCard=null;
     this.won=false; this.startTime=null; this.stopTimer();
     $('#winoverlay').classList.remove('show');
@@ -1168,6 +1172,7 @@ class UI {
     if(flips.some(c=>c.rank===1||c.rank===13)) Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1);
     if(msg) this.say(msg);
     if(this.eng.isWon()) this.onWin();
+    else if(!this._autoRunning && this.eng.canAutoComplete()) this.startAutoComplete();
   }
   /* Illegal-move womp/fail: sparse (~1 in 10). Most rejects stay silent. */
   rejectSfx(){
@@ -1559,16 +1564,16 @@ class UI {
     board.addEventListener('pointermove',e=>this.onMove(e));
     board.addEventListener('pointerup',e=>this.onUp(e));
     board.addEventListener('pointercancel',e=>this.onUp(e,true));
-    this.view.stockEl.addEventListener('click',()=>{ if(this.messy) return; if(!this.drag){ Sfx.flip();
+    this.view.stockEl.addEventListener('click',()=>{ if(this.messy||this._autoRunning) return; if(!this.drag){ Sfx.flip();
       const r=this.eng.draw(); this.afterMove(r.recycled?'Stock recycled.':'Drew card'+(this.drawCount>1?'s':'')+'.'); this.commentate('stock'); }});
     this.view.stockEl.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();this.view.stockEl.click();} });
     // pile clicks (foundations / empty columns) for tap-to-place
     [...this.view.foundPiles,...this.view.tabCols].forEach(p=>{
       p.addEventListener('click',e=>{ if(e.target.closest('.card')) return; this.onPileTap(p); });
     });
-    $('#bDeal').onclick=()=>this.newDeal();
+    $('#bDeal').onclick=()=>{ if(this._autoRunning) return; this.newDeal(); };
     $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
-    $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
+    $('#bUndo').onclick=()=>{ if(this._autoRunning) return; if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
       const sass=CUSTOM.undoSass||[];
       this.afterMove(this.undoCount%3===0&&sass.length?sass[(Math.random()*sass.length)|0]:'Undone.');
@@ -1577,7 +1582,7 @@ class UI {
     $('#bDraw').onclick=()=>{ const n=store.get('drawCount',1)===1?3:1; store.set('drawCount',n);
       $('#bDraw').textContent='Draw '+n; Sfx.click(); this.say('Next game: Draw '+n+'.'); };
     $('#bDraw').textContent='Draw '+store.get('drawCount',1);
-    $('#bHint').onclick=()=>this.doHint();
+    $('#bHint').onclick=()=>{ if(this._autoRunning) return; this.doHint(); };
     // Style: next felt color, always landing on the classic green table
     $('#bStyle').onclick=()=>{ const felts=Object.keys(TABLES).filter(k=>!TABLES[k].scene);
       this.theme=felts[(felts.indexOf(this.theme)+1)%felts.length];
@@ -1623,7 +1628,7 @@ class UI {
     ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>this.poke(),{passive:true}));
   }
   onDown(e){
-    if(this.messy) return;
+    if(this.messy||this._autoRunning) return;
     if(e.button!==undefined&&e.button!==0) return;
     const card=e.target.closest('.card'); if(!card) return;
     const loc=this.locFromEl(card); if(!loc) return;
@@ -1754,18 +1759,88 @@ class UI {
     else { this.rejectSfx(); this.say('That move is not legal.'); }
   }
   doHint(){
-    if(this.messy) return;
+    if(this.messy||this._autoRunning) return;
     Sfx.click(); Vox.play('hint');
     this.say('How the hell should I know??');
   }
+  /* Windows Solitaire–style auto-complete: when every tableau card is face-up and
+     the game is finishable by foundation moves (+ draws) only, cards file home. */
+  startAutoComplete(){
+    if(this._autoRunning||this.won||this.messy) return;
+    if(!this.eng.canAutoComplete()) return;
+    this._autoRunning=true;
+    this.view.selected=null;
+    this.say('Auto-complete! ✨');
+    Sfx.flip();
+    // brief beat so the player sees the board settle, then start filing
+    setTimeout(()=>this.autoLoop(), 380);
+  }
+  sourceElForAuto(from){
+    if(!from) return null;
+    if(from.zone==='waste'){
+      const cards=[...this.view.wasteEl.querySelectorAll('.card')];
+      return cards[cards.length-1]||null;
+    }
+    if(from.zone==='tableau'){
+      const col=this.view.tabCols[from.col];
+      const cards=[...col.querySelectorAll('.card')];
+      return cards[cards.length-1]||null;
+    }
+    return null;
+  }
+  foundationPileEl(suit){
+    return this.view.foundPiles[SUITS.indexOf(suit)]||this.view.foundPiles[0];
+  }
+  flyToFoundation(card, fromRect, toEl, done){
+    const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const to=toEl.getBoundingClientRect();
+    if(reduce||!fromRect||fromRect.width<4){ done(); return; }
+    const layer=$('#draglayer');
+    const g=this.view.cardEl(card,{photo:this.photoFor(card.id),backPat:this.backPat});
+    g.classList.add('autofly','flipped');
+    g.style.left=fromRect.left+'px'; g.style.top=fromRect.top+'px';
+    g.style.width=fromRect.width+'px'; g.style.height=fromRect.height+'px';
+    layer.appendChild(g);
+    // force layout, then animate toward foundation
+    void g.offsetWidth;
+    g.style.left=to.left+'px'; g.style.top=to.top+'px';
+    g.style.transform='scale(1.02)';
+    const ms=170;
+    setTimeout(()=>{ g.remove(); done(); }, ms);
+  }
   autoLoop(){
-    if(!this.eng.canAutoComplete()){ Sfx.bad(); return; }
-    const step=()=>{
-      if(this.won) return;
+    if(this.won){ this._autoRunning=false; return; }
+    const peek=this.eng.peekAutoStep();
+    if(!peek){
+      this._autoRunning=false;
+      if(this.eng.isWon()) this.onWin();
+      return;
+    }
+    if(peek.kind==='foundation'){
+      const src=this.sourceElForAuto(peek.from);
+      const fromRect=src?src.getBoundingClientRect():null;
+      const toEl=this.foundationPileEl(peek.card.suit);
       const r=this.eng.autoStep();
-      if(r.ok){ this.afterMove(); setTimeout(step,170); }
-    };
-    Sfx.flip(); step();
+      if(!r.ok){ this._autoRunning=false; return; }
+      // render after move; hide the new foundation top until the fly ghost lands
+      this.ensureTimer(); this.view.render(this); this.updateStats();
+      const landed=toEl.querySelector('.card');
+      if(landed) landed.style.opacity='0';
+      this.flyToFoundation(r.card, fromRect, toEl, ()=>{
+        if(landed) landed.style.opacity='';
+        Sfx.flip();
+        if(this.eng.isWon()){ this._autoRunning=false; this.onWin(); }
+        else setTimeout(()=>this.autoLoop(), 55);
+      });
+      return;
+    }
+    // draw / recycle — quick flip, then continue
+    const r=this.eng.autoStep();
+    if(!r.ok){ this._autoRunning=false; return; }
+    Sfx.flip();
+    this.ensureTimer(); this.view.render(this); this.updateStats();
+    if(this.eng.isWon()){ this._autoRunning=false; this.onWin(); }
+    else setTimeout(()=>this.autoLoop(), r.recycled?220:110);
   }
 
   /* bundled photo backs: one random photo per card, reshuffled every game.
