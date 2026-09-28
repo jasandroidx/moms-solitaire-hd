@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 336">
+  <rect width="240" height="336" rx="18" fill="#6e1428"/>
+  <rect x="10" y="10" width="220" height="316" rx="12" fill="#4a0d1b"/>
+  <rect x="16" y="16" width="208" height="304" rx="9" fill="none" stroke="#f0d78c" stroke-width="2.5"/>
+  <rect x="24" y="24" width="192" height="288" rx="6" fill="none" stroke="#f0d78c" stroke-width="0.8" opacity="0.8"/>
+  <g fill="none" stroke="#f0d78c" stroke-width="0.7" opacity="0.45">
+    <path d="M40 48h160M40 288h160M48 40v256M192 40v256"/>
+    <path d="M56 64l128 208M184 64L56 272"/>
+  </g>
+  <ellipse cx="120" cy="168" rx="58" ry="86" fill="#6e1428" stroke="#f0d78c" stroke-width="2"/>
+  <ellipse cx="120" cy="168" rx="46" ry="72" fill="none" stroke="#f0d78c" stroke-width="0.8"/>
+  <text x="120" y="186" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-style="italic" fill="#f0d78c">M</text>
+  <g fill="#f0d78c">
+    <path d="M36 44l6 6-6 6-6-6z"/>
+    <path d="M204 44l6 6-6 6-6-6z"/>
+    <path d="M36 280l6 6-6 6-6-6z"/>
+    <path d="M204 280l6 6-6 6-6-6z"/>
+  </g>
+</svg>
