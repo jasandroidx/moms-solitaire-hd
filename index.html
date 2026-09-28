@@ -98,9 +98,6 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 /* drag layer */
 #draglayer{position:fixed;left:0;top:0;pointer-events:none;z-index:50;}
 #draglayer .card{position:absolute;}
-.card.autofly{position:fixed;z-index:85;pointer-events:none;transition:left .16s ease-out, top .16s ease-out, transform .16s ease-out;
-  box-shadow:0 10px 28px rgba(0,0,0,.45);}
-@media (prefers-reduced-motion:reduce){.card.autofly{transition:none;}}
 /* ---------- win overlay ---------- */
 #winoverlay{
   position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
@@ -466,6 +463,19 @@ body[data-scene]::after{
   box-shadow:0 4px 14px rgba(0,0,0,.5)}
 #bScope img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .25s}
 #bScope:hover img{transform:scale(1.08)}
+/* magnifying glass: docked badge bottom-center; the lens follows the pointer at 2x */
+#bLens{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;width:76px;height:76px;border-radius:50%;
+  border:3px solid #2a1f14;background:#241a10;padding:0;cursor:pointer;z-index:40;touch-action:none;
+  box-shadow:0 4px 14px rgba(0,0,0,.5);font-size:38px;color:#fff;
+  display:flex;align-items:center;justify-content:center}
+#lens{position:fixed;width:230px;height:230px;border-radius:50%;z-index:80;display:none;
+  border:7px solid rgba(214,228,238,.95);overflow:hidden;pointer-events:none;background:#1d5c36;
+  box-shadow:0 10px 30px rgba(0,0,0,.55), inset 0 0 24px rgba(255,255,255,.22)}
+#lens.show{display:block}
+#lens .lview{position:absolute;transform-origin:0 0;pointer-events:none}
+#lens .lview *{pointer-events:none!important}
+#lens::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.30), rgba(255,255,255,0) 42%)}
 #scopePop{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
 #scopePop.show{display:flex}
 .scope-card{position:relative;max-width:440px;width:88%;max-height:80vh;overflow:auto;
@@ -506,6 +516,8 @@ body[data-scene]::after{
 <audio id="radioAudio" preload="none"></audio>
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
+<button id="bLens" title="Magnifying glass" aria-label="Magnifying glass">🔍</button>
+<div id="lens" aria-hidden="true"><div class="lview"></div></div>
 <div id="scopePop"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
@@ -663,13 +675,12 @@ const Ambience = {
 };
 /* Voice clips: mp3 files in sfx/, mapped in CUSTOM.vox. Lazy-loaded, unlocked on first tap. */
 const Vox = {
-  cache:{}, unlocked:false, _busyUntil:0,
+  cache:{}, unlocked:false,
   unlock(){ if(this.unlocked) return; this.unlocked=true;
     const v=CUSTOM.vox||{};
     for(const k of Object.keys(v)){ const f=v[k]; (Array.isArray(f)?f:[f]).forEach(x=>{ if(typeof x==='string') this.load(x); }); } },
   load(file){ if(!file||this.cache[file]) return;
     try{ const a=new Audio('sfx/'+file); a.preload='auto'; this.cache[file]=a; }catch(e){} },
-  busy(){ return Date.now()<this._busyUntil; },
   play(key, idx, vol){
     if(Sfx.muted) return; this.unlock();
     let f=(CUSTOM.vox||{})[key]; if(!f) return;
@@ -677,19 +688,7 @@ const Vox = {
     if(!f) return;
     this.load(f);
     const a=this.cache[f]; if(!a) return;
-    try{
-      a.volume=(vol==null?1:vol); a.currentTime=0;
-      const p=a.play(); if(p&&p.catch) p.catch(()=>{});
-      // mark long clips busy so sparse SFX don't stack over them
-      const dur=(isFinite(a.duration)&&a.duration>0)?a.duration:2.5;
-      if(dur>1.2) this._busyUntil=Math.max(this._busyUntil, Date.now()+Math.min(dur,8)*1000);
-    }catch(e){}
-  },
-  /* Sparse play: default ~1 in 10. Skips if muted, missing, or a long clip is still going. */
-  maybe(key, chance, vol){
-    if(Sfx.muted||this.busy()) return false;
-    if(Math.random()>=(chance==null?0.1:chance)) return false;
-    this.play(key, 0, vol); return true;
+    try{ a.volume=(vol==null?1:vol); a.currentTime=0; const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
   }
 };
 /* Ocean whale and night-sky shooting star. The still stays up; the clip plays over it, then goes away. */
@@ -877,10 +876,8 @@ class Renderer {
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci){
-          const from=this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length;
-          if(idx>=from) el.classList.add('selected');
-        }
+        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=col.length-this.eng.movableSequence(ci).length)
+          el.classList.add('selected');
         if(this.hintCard===c.id) el.classList.add('hintglow');
         colEl.appendChild(el);
         step=c.faceUp?offU:offD;
@@ -933,7 +930,7 @@ const CUSTOM = {
   // THE BIT: big splash words, then a play button that refuses to work
   splashText: "LA LA SOLITAIRE!!!!!",
   splashSub: "🎺 a Jason production 🎺",
-  playTeaseClicks: 2, // dead clicks before give-in: 1 = first Play starts; 2 = one tease then start
+  playTeaseClicks: 4, // dead clicks (corner chases) before it gives in
   playTease: ["...", "hey.", "patience, patience…"],
   playGiveIn: "OUCH! Alright, alright — keep your pants on! 😂",
   // THE COLD OPEN: messy pile of face-down cards; she clicks; sass; they fly up and deal
@@ -941,7 +938,7 @@ const CUSTOM = {
   // VOICE CLIPS: mp3s live in the sfx/ folder next to index.html — swap filenames, change the moments
   vox: {
     hint: 'youre-the-smartest-person-in-the-room-right-now.mp3', // she asks for a hint
-    illegal: 'sad-trombone-fail.mp3',                             // illegal move — via rejectSfx() ~1/10 only
+    illegal: 'sad-trombone-fail.mp3',                             // she tries a move that ain't legal
     win: 'wow-m.mp3',                                            // she wins the whole game
     idle: ['whatistheholdup.mp3','impatient-bender.mp3','Times_up.mp3'], // escalating idle nags
     boing: 'boing.mp3',                    // the Play button flees
@@ -956,14 +953,6 @@ const CUSTOM = {
     wahwah: 'sad-trombone-fail.mp3',     // anti-gravity win gag (same file as the illegal-move trombone)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
-    // ElevenLabs SFX (sparse via Vox.maybe — ~1/10 unless noted)
-    // (lah-lah-solitaire-intro.mp3 intentionally unwired — splash uses fanfare + cheer)
-    cardPlace: 'card-place.mp3',           // successful place (~10%)
-    ooooh: 'crowd-ooooh.mp3',              // ace/king/foundation peaks (~10%)
-    aaaah: 'crowd-aaaah.mp3',              // foundation / big place (~10%)
-    cheer: 'audience-cheer-clap.mp3',      // splash applause + rare place celebration (~10%, not stacked with cardPlace)
-    winJingle: 'win-jingle.mp3',           // win layer (always — wins are rare)
-    dealWhoosh: 'deal-whoosh.mp3',         // deal / floatUp (~10% or once per deal)
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
@@ -1046,7 +1035,6 @@ class UI {
     this.eng.state={stock:[],waste:[],foundations,tableau:[[],[],[],[],[],[],[]],drawCount:this.drawCount,moves:0};
     this.eng.history=[];
     this.messy=true; this.messFlying=false; this._flew=false;
-    this._autoRunning=false; $('#draglayer').innerHTML='';
     this.view.selected=null; this.view.hintCard=null;
     this.won=false; this.startTime=null; this.stopTimer();
     $('#winoverlay').classList.remove('show');
@@ -1082,7 +1070,6 @@ class UI {
     setTimeout(()=>sassy.classList.add('hide'),260);
     const mess=$('#mess'), cards=[...mess.children];
     Sfx.riffle();
-    Vox.maybe('dealWhoosh', 0.1);
     cards.forEach((el,i)=>{ // all fly up into one neat stack
       el.style.transitionDelay=(i*11)+'ms';
       el.style.left='calc(50% - 27px)'; el.style.top='calc(40% - 38px)';
@@ -1168,24 +1155,8 @@ class UI {
     const flips=this.eng.state.lastFlips||[]; this.eng.state.lastFlips=[];
     if(flips.some(c=>c.suit==='spades'&&c.rank===1)) Vox.play('ace'); // ♠ ace turned over
     if(!this._kingHeartsPlayed&&flips.some(c=>c.suit==='hearts'&&c.rank===13)){ this._kingHeartsPlayed=true; Vox.play('kingHearts'); } // 👑 first K♥ flip
-    // sparse crowd reaction on ace/king flips (in addition to dedicated VO)
-    if(flips.some(c=>c.rank===1||c.rank===13)) Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1);
     if(msg) this.say(msg);
     if(this.eng.isWon()) this.onWin();
-    else if(!this._autoRunning && this.eng.canAutoComplete()) this.startAutoComplete();
-  }
-  /* Illegal-move womp/fail: sparse (~1 in 10). Most rejects stay silent. */
-  rejectSfx(){
-    if(Math.random()>=0.1) return;
-    Sfx.bad(); Vox.play('illegal');
-  }
-  /* Sparse ElevenLabs place SFX: ~10% cardPlace OR cheer (not both); foundation gets slight cheer bias. Soft Sfx.flip stays. */
-  placeSfx(toFoundation){
-    if(Vox.busy()) return;
-    if(Math.random()>=0.1) return;
-    if(toFoundation && Math.random()<0.45) Vox.play('cheer');
-    else if(!toFoundation && Math.random()<0.25) Vox.play('cheer');
-    else Vox.play('cardPlace');
   }
   onWin(){
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
@@ -1193,7 +1164,7 @@ class UI {
     const secs=Math.floor((Date.now()-this.startTime)/1000);
     const bk=this.stats.best[this.drawCount]||Infinity;
     if(secs<bk){ this.stats.best[this.drawCount]=secs; store.set('stats',this.stats); }
-    Sfx.win(); Vox.play('win'); Vox.play('winJingle'); this.winShow();
+    Sfx.win(); Vox.play('win'); this.winShow();
     if(this.stats.wins===1) setTimeout(()=>this.bonusVideo(),4500); // first win ever: bonus video
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     $('#winstats').textContent=`${this.tick()} · ${this.eng.state.moves} moves · Draw ${this.drawCount}`+
@@ -1267,7 +1238,6 @@ class UI {
   /* soft rising shimmer for anti-gravity moments (replaces the sad trombone) */
   floatUp(){
     Sfx.ensure();
-    Vox.maybe('dealWhoosh', 0.1);
     if(Sfx.ctx&&!Sfx.muted){ const ctx=Sfx.ctx, t=ctx.currentTime;
       [0,4,7].forEach((st,k)=>{
         const o=ctx.createOscillator(), g=ctx.createGain();
@@ -1564,16 +1534,16 @@ class UI {
     board.addEventListener('pointermove',e=>this.onMove(e));
     board.addEventListener('pointerup',e=>this.onUp(e));
     board.addEventListener('pointercancel',e=>this.onUp(e,true));
-    this.view.stockEl.addEventListener('click',()=>{ if(this.messy||this._autoRunning) return; if(!this.drag){ Sfx.flip();
+    this.view.stockEl.addEventListener('click',()=>{ if(this.messy) return; if(!this.drag){ Sfx.flip();
       const r=this.eng.draw(); this.afterMove(r.recycled?'Stock recycled.':'Drew card'+(this.drawCount>1?'s':'')+'.'); this.commentate('stock'); }});
     this.view.stockEl.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();this.view.stockEl.click();} });
     // pile clicks (foundations / empty columns) for tap-to-place
     [...this.view.foundPiles,...this.view.tabCols].forEach(p=>{
       p.addEventListener('click',e=>{ if(e.target.closest('.card')) return; this.onPileTap(p); });
     });
-    $('#bDeal').onclick=()=>{ if(this._autoRunning) return; this.newDeal(); };
+    $('#bDeal').onclick=()=>this.newDeal();
     $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
-    $('#bUndo').onclick=()=>{ if(this._autoRunning) return; if(this.eng.undo()){Sfx.click();this.view.selected=null;
+    $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
       const sass=CUSTOM.undoSass||[];
       this.afterMove(this.undoCount%3===0&&sass.length?sass[(Math.random()*sass.length)|0]:'Undone.');
@@ -1582,7 +1552,7 @@ class UI {
     $('#bDraw').onclick=()=>{ const n=store.get('drawCount',1)===1?3:1; store.set('drawCount',n);
       $('#bDraw').textContent='Draw '+n; Sfx.click(); this.say('Next game: Draw '+n+'.'); };
     $('#bDraw').textContent='Draw '+store.get('drawCount',1);
-    $('#bHint').onclick=()=>{ if(this._autoRunning) return; this.doHint(); };
+    $('#bHint').onclick=()=>this.doHint();
     // Style: next felt color, always landing on the classic green table
     $('#bStyle').onclick=()=>{ const felts=Object.keys(TABLES).filter(k=>!TABLES[k].scene);
       this.theme=felts[(felts.indexOf(this.theme)+1)%felts.length];
@@ -1606,7 +1576,7 @@ class UI {
       if(this.musicOn){ Sfx.ensure(); Music.start(); Sfx.click(); } else Music.stop(); };
     $('#bMusic').textContent=this.musicOn?'Music':'Music off';
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
-    Radio.init();
+    Radio.init(); Lens.init();
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false);
         $('#bMusic').textContent='Music off'; });
@@ -1628,7 +1598,7 @@ class UI {
     ['pointerdown','keydown'].forEach(ev=>document.addEventListener(ev,()=>this.poke(),{passive:true}));
   }
   onDown(e){
-    if(this.messy||this._autoRunning) return;
+    if(this.messy) return;
     if(e.button!==undefined&&e.button!==0) return;
     const card=e.target.closest('.card'); if(!card) return;
     const loc=this.locFromEl(card); if(!loc) return;
@@ -1650,8 +1620,7 @@ class UI {
   startDrag(d){
     d.active=true;
     const layer=$('#draglayer'); layer.innerHTML='';
-    // Klondike: drag from the clicked face-up card down (partial stack), not always the full run
-    const seq=d.loc.zone==='waste'?[this.eng.topOf(this.eng.state.waste)]:this.eng.sequenceFrom(d.loc.col, d.loc.idx);
+    const seq=d.loc.zone==='waste'?[this.eng.topOf(this.eng.state.waste)]:this.eng.movableSequence(d.loc.col);
     const r=d.el.getBoundingClientRect();
     const cw=r.width, offU=cw*0.30;
     d.ghosts=seq.map((c,i)=>{
@@ -1691,32 +1660,27 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
-    // Snapshot drop point BEFORE clearing ghosts. Detached nodes report 0×0 rects, so
-    // hit-testing after innerHTML='' always missed the pile (highlights OK, commit = illegal/womp).
-    let cx=null, cy=null;
-    if(d&&d.active&&d.ghosts&&d.ghosts[0]){
-      const gx=d.ghosts[0].getBoundingClientRect();
-      cx=gx.left+gx.width/2; cy=gx.top+gx.height/2;
-    } else if(e&&e.clientX!=null){ cx=e.clientX; cy=e.clientY; }
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
     if(cancelled||!d.active){ this.onTap(d.el,d.loc); return; }
-    // drop: hit-test piles (same rules as updateDropHint / engine canPlace*)
-    const target=(cx!=null)?document.elementFromPoint(cx,cy):null;
+    // drop: hit-test piles
+    const gx=d.ghosts[0].getBoundingClientRect();
+    const cx=gx.left+gx.width/2, cy=gx.top+gx.height/2;
+    const target=document.elementFromPoint(cx,cy);
     const pile=target&&target.closest?target.closest('.pile,.tcol'):null;
     let done=false;
     if(pile){
       const z=pile.dataset.zone;
       if(z==='foundation'&&d.seq.length===1){
         const r=this.eng.moveToFoundation(d.loc);
-        if(r.ok){ Sfx.flip(); this.placeSfx(true); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); done=true; }
+        if(r.ok){ Sfx.flip(); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); done=true; }
       } else if(z==='tableau'){
         const r=this.eng.moveToTableau(d.loc,+pile.dataset.col);
-        if(r.ok){ Sfx.flip(); this.placeSfx(false); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
+        if(r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
       }
     }
-    if(!done){ this.rejectSfx(); this.view.render(this); }
+    if(!done){ Sfx.bad(); Vox.play('illegal'); this.view.render(this); }
   }
   onTap(cardEl,loc){
     const now=Date.now();
@@ -1731,21 +1695,16 @@ class UI {
       if(loc.zone==='foundation') r=this.eng.moveToFoundation(sel);
       else if(loc.zone==='tableau') r=this.eng.moveToTableau(sel,loc.col);
       else r={ok:false};
-      if(r&&r.ok){ Sfx.flip(); this.placeSfx(loc.zone==='foundation'); this.view.selected=null; this.afterMove('Moved.');
-        if(loc.zone==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
-        else this.commentate('tableau', r.cards[0]); }
-      else { this.rejectSfx(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
+      if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
+        if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
+      else { Sfx.bad(); Vox.play('illegal'); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
     if(loc.zone==='foundation') return;
     // else select the sequence (R1)
     if(loc.zone==='waste'){ this.view.selected={zone:'waste'}; }
-    else if(loc.zone==='tableau'){
-      const seq=this.eng.movableSequence(loc.col);
-      if(seq.length && loc.idx>=colTopIdx(this.eng.state.tableau[loc.col],seq))
-        this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx};
-    }
+    else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col}; }
     this.view.render(this); Sfx.click();
   }
   onPileTap(pile){
@@ -1753,94 +1712,23 @@ class UI {
     const z=pile.dataset.zone; let r;
     if(z==='foundation') r=this.eng.moveToFoundation(sel);
     else r=this.eng.moveToTableau(sel,+pile.dataset.col);
-    if(r&&r.ok){ Sfx.flip(); this.placeSfx(z==='foundation'); this.view.selected=null; this.afterMove('Moved.');
-      if(z==='foundation'){ this.commentate('foundation', r.card); Vox.maybe(Math.random()<0.5?'ooooh':'aaaah', 0.1); }
-      else this.commentate('tableau', r.cards[0]); }
-    else { this.rejectSfx(); this.say('That move is not legal.'); }
+    if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
+      if(z==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
+    else { Sfx.bad(); Vox.play('illegal'); this.say('That move is not legal.'); }
   }
   doHint(){
-    if(this.messy||this._autoRunning) return;
+    if(this.messy) return;
     Sfx.click(); Vox.play('hint');
     this.say('How the hell should I know??');
   }
-  /* Windows Solitaire–style auto-complete: when every tableau card is face-up and
-     the game is finishable by foundation moves (+ draws) only, cards file home. */
-  startAutoComplete(){
-    if(this._autoRunning||this.won||this.messy) return;
-    if(!this.eng.canAutoComplete()) return;
-    this._autoRunning=true;
-    this.view.selected=null;
-    this.say('Auto-complete! ✨');
-    Sfx.flip();
-    // brief beat so the player sees the board settle, then start filing
-    setTimeout(()=>this.autoLoop(), 380);
-  }
-  sourceElForAuto(from){
-    if(!from) return null;
-    if(from.zone==='waste'){
-      const cards=[...this.view.wasteEl.querySelectorAll('.card')];
-      return cards[cards.length-1]||null;
-    }
-    if(from.zone==='tableau'){
-      const col=this.view.tabCols[from.col];
-      const cards=[...col.querySelectorAll('.card')];
-      return cards[cards.length-1]||null;
-    }
-    return null;
-  }
-  foundationPileEl(suit){
-    return this.view.foundPiles[SUITS.indexOf(suit)]||this.view.foundPiles[0];
-  }
-  flyToFoundation(card, fromRect, toEl, done){
-    const reduce=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const to=toEl.getBoundingClientRect();
-    if(reduce||!fromRect||fromRect.width<4){ done(); return; }
-    const layer=$('#draglayer');
-    const g=this.view.cardEl(card,{photo:this.photoFor(card.id),backPat:this.backPat});
-    g.classList.add('autofly','flipped');
-    g.style.left=fromRect.left+'px'; g.style.top=fromRect.top+'px';
-    g.style.width=fromRect.width+'px'; g.style.height=fromRect.height+'px';
-    layer.appendChild(g);
-    // force layout, then animate toward foundation
-    void g.offsetWidth;
-    g.style.left=to.left+'px'; g.style.top=to.top+'px';
-    g.style.transform='scale(1.02)';
-    const ms=170;
-    setTimeout(()=>{ g.remove(); done(); }, ms);
-  }
   autoLoop(){
-    if(this.won){ this._autoRunning=false; return; }
-    const peek=this.eng.peekAutoStep();
-    if(!peek){
-      this._autoRunning=false;
-      if(this.eng.isWon()) this.onWin();
-      return;
-    }
-    if(peek.kind==='foundation'){
-      const src=this.sourceElForAuto(peek.from);
-      const fromRect=src?src.getBoundingClientRect():null;
-      const toEl=this.foundationPileEl(peek.card.suit);
+    if(!this.eng.canAutoComplete()){ Sfx.bad(); return; }
+    const step=()=>{
+      if(this.won) return;
       const r=this.eng.autoStep();
-      if(!r.ok){ this._autoRunning=false; return; }
-      // render after move; hide the new foundation top until the fly ghost lands
-      this.ensureTimer(); this.view.render(this); this.updateStats();
-      const landed=toEl.querySelector('.card');
-      if(landed) landed.style.opacity='0';
-      this.flyToFoundation(r.card, fromRect, toEl, ()=>{
-        if(landed) landed.style.opacity='';
-        Sfx.flip();
-        if(this.eng.isWon()){ this._autoRunning=false; this.onWin(); }
-        else setTimeout(()=>this.autoLoop(), 55);
-      });
-      return;
-    }
-    // draw / recycle — quick flip, then continue
-    const r=this.eng.autoStep();
-    if(!r.ok){ this._autoRunning=false; return; }
-    Sfx.flip();
-    this.ensureTimer(); this.view.render(this); this.updateStats();
-    if(this.eng.isWon()){ this._autoRunning=false; this.onWin(); }
-    else setTimeout(()=>this.autoLoop(), r.recycled?220:110);
+      if(r.ok){ this.afterMove(); setTimeout(step,170); }
+    };
+    Sfx.flip(); step();
   }
 
   /* bundled photo backs: one random photo per card, reshuffled every game.
@@ -1873,12 +1761,10 @@ class UI {
     });
     $('#splashsub').textContent=CUSTOM.splashSub;
     const splash=$('#splash'); splash.classList.remove('hide');
-    // Splash/logo appear: synth fanfare + audience applause (no TTS intro)
-    if(!this._introPlayed){ this._introPlayed=true; Sfx.ensure(); Sfx.fanfare(); Vox.play('cheer'); }
     setTimeout(()=>splash.classList.add('hide'), 2400);
     $('#intro').classList.remove('hide');
-    // Play tease: at most ONE corner dodge, then the next click starts (playTeaseClicks=2 → 1 tease).
-    // Set playTeaseClicks to 1 to start on the first click with no chase.
+    // the button that refuses to work — it flees to a corner, she chases it.
+    // click 1: silent dodge. click 2: 🎵 can't touch this. click 3: ohhh, you gotta be quicker than that. click 4: it gives in.
     let clicks=0, chases=0;
     const btn=$('#bPlay'); btn.textContent='▶ Play';
     const corner=()=>{
@@ -1900,9 +1786,8 @@ class UI {
         btn.style.transition='left .16s ease-out, top .16s ease-out, transform .16s';
         btn.style.left=s.l+'px'; btn.style.top=s.t+'px';
         btn.style.transform=`rotate(${(Math.random()*18-9)|0}deg) scale(${Math.max(.55, 1-chases*.12)})`;
-        Vox.play('boing');
-        const line=(CUSTOM.playTease&&CUSTOM.playTease[0])||'...';
-        this.say(line);
+        if(clicks===2){ Vox.play('cantTouch'); this.say("🎵 Can't touch this!"); }
+        else if(clicks===3){ Vox.play('quicker'); this.say("Ohhh, you gotta be quicker than that!"); }
         return;
       }
       btn.onclick=null;
@@ -2027,35 +1912,67 @@ const Radio={
     this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(cb)cb(); }).catch(()=>{}); },
   stop(){ this.on=false; if(this.el) this.el.classList.remove('on'); if(this.audio) this.audio.pause(); }
 };
-/* daily horoscope scroll: local day-seeded readings (Ohmanda API is dead / TLS broken;
-   free public APIs lack CORS for file:// Chromebook opens). Sign remembered, cached per day. */
+/* daily horoscope scroll: free Ohmanda API, sign remembered, reading cached per day */
+/* magnifying glass: press-and-hold the badge to pick it up — a 2x loupe follows the
+   pointer; release and it goes back home. The copy is look-but-don't-touch
+   (ids stripped, inert, pointer-events none) so the game underneath keeps working;
+   a MutationObserver re-snaps it after every board change. */
+const Lens={
+  on:false, S:2, D:230, x:0, y:0, raf:0, bw:0, bh:0, bx:0, by:0, obs:null,
+  init(){
+    this.badge=$('#bLens'); this.el=$('#lens'); this.view=this.el.querySelector('.lview');
+    this.badge.addEventListener('pointerdown',e=>{ e.preventDefault(); Sfx.click(); this.open(e.clientX,e.clientY); });
+    this.badge.addEventListener('contextmenu',e=>e.preventDefault());
+    window.addEventListener('pointermove',e=>{ if(this.on) this.move(e.clientX,e.clientY); }, {passive:true});
+    window.addEventListener('pointerup',()=>this.close());
+    window.addEventListener('pointercancel',()=>this.close());
+    this.obs=new MutationObserver(()=>{ if(this.on) this.schedule(); });
+    this.obs.observe($('#board'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+  },
+  open(x,y){
+    if(this.on) return;
+    this.on=true;
+    this.el.classList.add('show');
+    document.body.style.touchAction='none';
+    this.refresh(); this.move(x,y);
+  },
+  close(){
+    if(!this.on) return;
+    this.on=false;
+    this.el.classList.remove('show');
+    document.body.style.touchAction='';
+  },
+  schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
+  refresh(){
+    const board=$('#board'); if(!board) return;
+    const r=board.getBoundingClientRect();
+    this.bw=r.width; this.bh=r.height; this.bx=r.left; this.by=r.top;
+    this.view.style.width=r.width+'px'; this.view.style.height=r.height+'px';
+    this.view.style.transform='scale('+this.S+')';
+    const c=board.cloneNode(true);
+    c.removeAttribute('id');
+    c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
+    c.querySelectorAll('[tabindex]').forEach(n=>n.removeAttribute('tabindex'));
+    c.setAttribute('aria-hidden','true'); c.inert=true;
+    this.view.innerHTML=''; this.view.appendChild(c);
+    this.place();
+  },
+  move(x,y){
+    this.x=Math.max(0,Math.min(innerWidth,x)); this.y=Math.max(0,Math.min(innerHeight,y));
+    this.place();
+  },
+  place(){
+    if(!this.on||!this.bw) return;
+    const R=this.D/2;
+    this.el.style.left=(this.x-R)+'px'; this.el.style.top=(this.y-R)+'px';
+    const bx=this.x-this.bx, by=this.y-this.by; // board point under the pointer -> lens center
+    this.view.style.left=(R-bx*this.S)+'px'; this.view.style.top=(R-by*this.S)+'px';
+  }
+};
 const Scope={
   signs:[['aries','♈','Aries'],['taurus','♉','Taurus'],['gemini','♊','Gemini'],['cancer','♋','Cancer'],['leo','♌','Leo'],['virgo','♍','Virgo'],['libra','♎','Libra'],['scorpio','♏','Scorpio'],['sagittarius','♐','Sagittarius'],['capricorn','♑','Capricorn'],['aquarius','♒','Aquarius'],['pisces','♓','Pisces']],
-  /* warm, mom-friendly stubs — a few per sign; pick by date so it changes daily */
-  pool:{
-    aries:['A spark of courage finds you today — trust your first instinct and take one brave little step.','Energy runs high; channel it into something kind for yourself or someone you love.','A fresh start is whispering your name. Answer with a smile and a yes.'],
-    taurus:['Comfort and steady progress go hand in hand today. Savor the small pleasures.','Patience pays off — something you have been tending quietly is about to bloom.','Treat yourself gently. Soft music, a warm drink, and one finished chore feel like luxury.'],
-    gemini:['A cheerful chat brightens the day. Reach out — someone is glad to hear from you.','Curiosity is your friend. Try a tiny new thing and see where it leads.','Words flow easily. A note, a joke, or a kind text lands just right.'],
-    cancer:['Home and heart take center stage. Nest a little; you deserve the cozy.','Feelings run deep and true — honor them with a quiet moment for yourself.','Someone close appreciates your care more than they say. Your warmth matters.'],
-    leo:['You shine without trying. Let a little pride in a job well done light your afternoon.','Generosity comes naturally — a small kindness comes back around.','Playfulness lifts the day. Laugh out loud; it suits you.'],
-    virgo:['Things settle into a gentle routine, and that is a gift. Detail by detail, you are making real progress — do not be too hard on yourself if it is not perfect yet.','Your careful eye spots what others miss. One tidy corner or finished list will feel wonderfully satisfying today.','Quiet competence is your superpower. Take it one neat step at a time; the results will show soon.','A practical kindness — to yourself or a loved one — sets the tone. Order brings peace, and peace brings joy.'],
-    libra:['Balance finds you when you pause for beauty — a flower, a song, a fair compromise.','Harmony loves company. A shared moment smooths any rough edges.','Choose the kind option. Grace looks good on you today.'],
-    scorpio:['Depth and loyalty serve you well. Trust what you already know in your bones.','A private win is still a win. Keep a little magic just for you.','Intensity softens into insight — you see the heart of the matter clearly.'],
-    sagittarius:['Adventure can be a walk around the block with fresh eyes. Stay open.','Optimism is contagious today. Share a hopeful thought and watch it spread.','A bigger picture lifts your mood. Look up — the sky agrees with you.'],
-    capricorn:['Steady effort earns quiet respect, including your own. Keep going.','Structure frees you — a simple plan turns the day into something solid.','Ambition can be gentle: one responsible step, then a well-earned rest.'],
-    aquarius:['A bright idea arrives sideways. Welcome the unusual with a grin.','Friendship and freedom mix well today. Be yourself; your people get it.','Something progressive and kind wants your attention — give it a little time.'],
-    pisces:['Dreams and intuition color the day softly. Follow the feeling that feels like home.','Compassion is your compass. A tender gesture means more than you know.','Art, music, or a quiet daydream restores you. Let the world blur for a minute.']
-  },
   pop:null,
   today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
-  /* stable pick from the sign's pool using today's date */
-  pick(sign){
-    const list=this.pool[sign]||this.pool.virgo;
-    const key=this.today()+'|'+sign;
-    let h=2166136261;
-    for(let i=0;i<key.length;i++){ h^=key.charCodeAt(i); h=Math.imul(h,16777619); }
-    return list[Math.abs(h)%list.length];
-  },
   open(){ Sfx.click();
     this.pop=$('#scopePop'); this.pop.classList.add('show');
     this.show('virgo'); // mom's sign — no picker
@@ -2064,26 +1981,14 @@ const Scope={
   show(sign){
     const box=this.pop.querySelector('.scope-body'); box.innerHTML='';
     const cached=store.get('scopeCache',null);
-    if(cached&&cached.date===this.today()&&cached.sign===sign&&cached.text)
-      return this.render(sign,cached.date,cached.text);
-    const finish=text=>{
-      store.set('scopeCache',{date:this.today(),sign:sign,text:text});
-      this.render(sign,this.today(),text);
-    };
-    const local=()=>finish(this.pick(sign));
-    // file:// (mom's Chromebook) cannot use cross-origin APIs — serve local stubs instantly
-    if(typeof location!=='undefined' && location.protocol==='file:') return local();
-    // http(s): try free public API (no key); fall back to local on CORS / offline / errors
+    if(cached&&cached.date===this.today()&&cached.sign===sign) return this.render(sign,cached.date,cached.text);
     const h=document.createElement('div'); h.className='scope-title'; h.textContent='🔮 Consulting the stars…'; box.appendChild(h);
-    const api='https://freehoroscopeapi.com/api/v1/get-horoscope/daily?sign='+encodeURIComponent(sign)+'&day=TODAY';
-    let done=false;
-    const once=fn=>{ if(done) return; done=true; fn(); };
-    const t=setTimeout(()=>once(local),2500);
-    fetch(api).then(r=>{ if(!r.ok) throw 0; return r.json(); }).then(j=>{
-      const text=j&&j.data&&j.data.horoscope;
-      if(!text) throw 0;
-      clearTimeout(t); once(()=>finish(text));
-    }).catch(()=>{ clearTimeout(t); once(local); });
+    fetch('https://ohmanda.com/api/horoscope/'+sign).then(r=>r.json()).then(j=>{
+      if(!j||!j.horoscope) throw 0;
+      store.set('scopeCache',{date:this.today(),sign:sign,text:j.horoscope});
+      this.render(sign,j.date||this.today(),j.horoscope);
+    }).catch(()=>{ box.innerHTML=''; const t=document.createElement('div'); t.className='scope-title';
+      t.textContent='✨ The stars are quiet right now — try again in a bit. ✨'; box.appendChild(t); });
   },
   render(sign,date,text){
     const meta=this.signs.find(s=>s[0]===sign);
