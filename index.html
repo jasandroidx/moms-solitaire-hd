@@ -1577,7 +1577,7 @@ class UI {
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
     Radio.init(); Lens.init();
     $('#bRadio').onclick=()=>{ Sfx.click();
-      if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false);
+      if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
         $('#bMusic').textContent='Music off'; });
       else Radio.stop(); };
     // horoscope scroll: bottom-left corner
@@ -1684,13 +1684,15 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
+    // read the drop point BEFORE clearing the layer: a detached ghost reports a zero rect
+    const gx=(d&&d.ghosts&&d.ghosts[0])?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
-    if(cancelled||!d.active){ this.onTap(d.el,d.loc); return; }
+    if(cancelled){ return; } // system-cancelled gesture: drop silently, never convert to a tap
+    if(!d.active){ this.onTap(d.el,d.loc); return; }
     // drop: forgiving hit-test over piles; silent cancel on empty table / source pile
-    const gx=d.ghosts[0].getBoundingClientRect();
-    const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
+    const pile=gx?this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2):null;
     let done=false, illegal=false;
     if(pile){
       const z=pile.dataset.zone;
