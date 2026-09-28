@@ -856,7 +856,8 @@ class Renderer {
     // waste: fan last 3
     this.clearPile(this.wasteEl);
     const show=s.waste.slice(-3);
-    const cw=this.stockEl.getBoundingClientRect().width||96;
+    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
+    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
     const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});
@@ -1627,7 +1628,13 @@ class UI {
       const start=colTopIdx(col,this.eng.movableSequence(d.loc.col));
       seq=col.slice(Math.max(d.loc.idx,start));
     }
+    // Ordering/connection constraint: verify d.el is connected before reading layout; re-query if detached by a re-render
+    if(!d.el||!d.el.isConnected){
+      const re=d.el&&d.el.dataset.cid?$('#board [data-cid="'+d.el.dataset.cid+'"]'):null;
+      if(re&&re.isConnected) d.el=re; else return;
+    }
     const r=d.el.getBoundingClientRect();
+    if(!r.width) return;
     const cw=r.width, offU=cw*0.30;
     d.ghosts=seq.map((c,i)=>{
       const g=this.view.cardEl(c,{photo:!!this.backPhoto,backPat:this.backPat});
@@ -1651,6 +1658,8 @@ class UI {
   updateDropHint(d){
     document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
     if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
+    // Ordering/connection constraint: ghost element must be connected to DOM before measuring layout
+    if(!d.ghosts[0].isConnected) return;
     const gx=d.ghosts[0].getBoundingClientRect();
     const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
     if(!pile) return;
@@ -1667,6 +1676,8 @@ class UI {
   pileAt(x,y){
     let best=null,bestD=Infinity;
     document.querySelectorAll('.pile,.tcol').forEach(p=>{
+      // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
+      if(!p.isConnected) return;
       const r=p.getBoundingClientRect(), pad=16;
       if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
       const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
@@ -1684,8 +1695,8 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
-    // read the drop point BEFORE clearing the layer: a detached ghost reports a zero rect
-    const gx=(d&&d.ghosts&&d.ghosts[0])?d.ghosts[0].getBoundingClientRect():null;
+    // Ordering/connection constraint: read ghost rect BEFORE clearing #draglayer; ensure ghost is connected
+    const gx=(d&&d.ghosts&&d.ghosts[0]&&d.ghosts[0].isConnected)?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
@@ -1800,7 +1811,8 @@ class UI {
     let clicks=0, chases=0;
     const btn=$('#bPlay'); btn.textContent='▶ Play';
     const corner=()=>{
-      const pad=16, w=btn.offsetWidth||120, h=btn.offsetHeight||44;
+      // Ordering/connection constraint: button must be connected to DOM when measuring layout; fall back if zero/detached
+      const pad=16, w=(btn&&btn.isConnected?btn.offsetWidth:0)||120, h=(btn&&btn.isConnected?btn.offsetHeight:0)||44;
       const spots=[
         {l:pad, t:pad},
         {l:Math.max(pad, window.innerWidth-w-pad), t:pad},
@@ -1841,7 +1853,8 @@ class UI {
     Sfx.flip(); Vox.play('idle', this.idleStage); Vox.play('wiggle');
     if(this.theme==='aquarium'&&Math.random()<0.18) setTimeout(()=>Vox.play('whale'), 800); // 🐋 a distant whale drifts by
     document.querySelectorAll('#tableau .card').forEach((c,i)=>{
-      if(i%3===0){ c.classList.remove('wiggle'); void c.offsetWidth; c.classList.add('wiggle'); } });
+      // Ordering/connection constraint: card must be connected to DOM before forcing reflow
+      if(i%3===0&&c.isConnected){ c.classList.remove('wiggle'); void c.offsetWidth; c.classList.add('wiggle'); } });
     if(this.idleStage>=2) this.pickSurprise(true);
     this.idleStage++;
     this.idleT=setTimeout(()=>this.onIdle(), CUSTOM.idleSec*1000);
@@ -1977,7 +1990,9 @@ const Lens={
   },
   schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
   refresh(){
-    const board=$('#board'); if(!board) return;
+    // Ordering/connection constraint: do not read layout or clone board if Lens is inactive or board is detached/hidden
+    if(!this.on) return;
+    const board=$('#board'); if(!board||!board.isConnected) return;
     const r=board.getBoundingClientRect();
     this.bw=r.width; this.bh=r.height; this.bx=r.left; this.by=r.top;
     this.view.style.width=r.width+'px'; this.view.style.height=r.height+'px';
