@@ -95,6 +95,7 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 .card{touch-action:none;}
 .drop-ok .slot{filter:brightness(.55);}
 .drop-ok .card:last-child{filter:brightness(.62);}
+.drop-ok{outline:3px solid var(--gold,#ffd75e);outline-offset:5px;border-radius:14px;}
 /* drag layer */
 #draglayer{position:fixed;left:0;top:0;pointer-events:none;z-index:50;}
 #draglayer .card{position:absolute;}
@@ -607,7 +608,7 @@ const Sfx = {
   },
   click(){ this.tone(660,.07,'triangle',.08); },
   flip(){ this.tone(440,.06,'triangle',.06); this.tone(660,.06,'triangle',.05,.05); },
-  bad(){ this.tone(160,.12,'sawtooth',.05); },
+  bad(){ this.tone(540,.06,'square',.045); this.tone(405,.07,'square',.045,.06); },
   fanfare(){ [392,523,659,784,1047].forEach((f,i)=>this.tone(f,.2,'triangle',.1,i*.1)); },
   sigh(){ this.tone(330,.16,'sine',.09); this.tone(220,.3,'sine',.09,.16); },
   riffle(){ for(let i=0;i<14;i++) this.tone(180+Math.random()*700,.03,'square',.035,i*.045); },
@@ -876,7 +877,7 @@ class Renderer {
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=col.length-this.eng.movableSequence(ci).length)
+        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=(this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length))
           el.classList.add('selected');
         if(this.hintCard===c.id) el.classList.add('hintglow');
         colEl.appendChild(el);
@@ -938,7 +939,6 @@ const CUSTOM = {
   // VOICE CLIPS: mp3s live in the sfx/ folder next to index.html — swap filenames, change the moments
   vox: {
     hint: 'youre-the-smartest-person-in-the-room-right-now.mp3', // she asks for a hint
-    illegal: 'sad-trombone-fail.mp3',                             // she tries a move that ain't legal
     win: 'wow-m.mp3',                                            // she wins the whole game
     idle: ['whatistheholdup.mp3','impatient-bender.mp3','Times_up.mp3'], // escalating idle nags
     boing: 'boing.mp3',                    // the Play button flees
@@ -950,7 +950,6 @@ const CUSTOM = {
     rareCard: 'clown-horn.mp3',           // VERY rare gag when she clicks a card
     rareCardChance: 0.006,                // 0.6% + 5-min cooldown — genuinely rare
     whale: 'whale.mp3',                  // 🐋 aquarium table: win celebration + rare idle call (freesound.org/people/muri_kuri/sounds/684188 — CC license, recheck before public release)
-    wahwah: 'sad-trombone-fail.mp3',     // anti-gravity win gag (same file as the illegal-move trombone)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
   },
@@ -1620,7 +1619,14 @@ class UI {
   startDrag(d){
     d.active=true;
     const layer=$('#draglayer'); layer.innerHTML='';
-    const seq=d.loc.zone==='waste'?[this.eng.topOf(this.eng.state.waste)]:this.eng.movableSequence(d.loc.col);
+    // drag the grabbed card and everything below it — not the whole movable run
+    let seq;
+    if(d.loc.zone==='waste') seq=[this.eng.topOf(this.eng.state.waste)];
+    else {
+      const col=this.eng.state.tableau[d.loc.col];
+      const start=colTopIdx(col,this.eng.movableSequence(d.loc.col));
+      seq=col.slice(Math.max(d.loc.idx,start));
+    }
     const r=d.el.getBoundingClientRect();
     const cw=r.width, offU=cw*0.30;
     d.ghosts=seq.map((c,i)=>{
@@ -1646,17 +1652,35 @@ class UI {
     document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
     if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
     const gx=d.ghosts[0].getBoundingClientRect();
-    const target=document.elementFromPoint(gx.left+gx.width/2,gx.top+gx.height/2);
-    const pile=target&&target.closest?target.closest('.pile,.tcol'):null;
+    const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
     if(!pile) return;
     const z=pile.dataset.zone, card=d.seq[0];
     let ok=false;
-    if(z==='foundation'){ if(d.seq.length===1) ok=this.eng.canPlaceOnFoundation(card); }
+    if(z==='foundation'){ if(d.seq.length===1&&this.selIsTop(d.loc)) ok=this.eng.canPlaceOnFoundation(card); }
     else if(z==='tableau'){
       const toCol=+pile.dataset.col;
       if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
     }
     if(ok) pile.classList.add('drop-ok');
+  }
+  // forgiving drop targeting: 16px of grace around every pile, nearest center wins
+  pileAt(x,y){
+    let best=null,bestD=Infinity;
+    document.querySelectorAll('.pile,.tcol').forEach(p=>{
+      const r=p.getBoundingClientRect(), pad=16;
+      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
+      const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
+      if(d<bestD){ bestD=d; best=p; }
+    });
+    return best;
+  }
+  // is this loc the top card of its pile (the only card a foundation can take)?
+  selIsTop(loc){
+    if(!loc) return false;
+    if(loc.zone==='waste') return true;
+    if(loc.zone!=='tableau') return false;
+    const col=this.eng.state.tableau[loc.col];
+    return loc.idx===col.length-1;
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
@@ -1664,23 +1688,29 @@ class UI {
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
     if(cancelled||!d.active){ this.onTap(d.el,d.loc); return; }
-    // drop: hit-test piles
+    // drop: forgiving hit-test over piles; silent cancel on empty table / source pile
     const gx=d.ghosts[0].getBoundingClientRect();
-    const cx=gx.left+gx.width/2, cy=gx.top+gx.height/2;
-    const target=document.elementFromPoint(cx,cy);
-    const pile=target&&target.closest?target.closest('.pile,.tcol'):null;
-    let done=false;
+    const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
+    let done=false, illegal=false;
     if(pile){
       const z=pile.dataset.zone;
-      if(z==='foundation'&&d.seq.length===1){
+      if(z==='foundation'&&d.seq.length===1&&this.selIsTop(d.loc)){
         const r=this.eng.moveToFoundation(d.loc);
         if(r.ok){ Sfx.flip(); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); done=true; }
+        else illegal=true;
       } else if(z==='tableau'){
-        const r=this.eng.moveToTableau(d.loc,+pile.dataset.col);
-        if(r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
+        const toCol=+pile.dataset.col;
+        if(d.loc.zone==='tableau'&&d.loc.col===toCol){ /* dropped back home: silent cancel */ }
+        else {
+          const r=this.eng.moveToTableau(d.loc,toCol);
+          if(r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
+          else illegal=true;
+        }
       }
+      // unknown zone (stock/waste): silent cancel
     }
-    if(!done){ Sfx.bad(); Vox.play('illegal'); this.view.render(this); }
+    if(illegal) Sfx.bad();
+    if(!done) this.view.render(this);
   }
   onTap(cardEl,loc){
     const now=Date.now();
@@ -1692,29 +1722,29 @@ class UI {
       if(loc.zone==='tableau'&&sel.zone==='tableau'&&sel.col===loc.col){ this.view.selected=null; this.view.render(this); return; }
       if(loc.zone==='waste'&&sel.zone==='waste'){ this.view.selected=null; this.view.render(this); return; }
       let r;
-      if(loc.zone==='foundation') r=this.eng.moveToFoundation(sel);
+      if(loc.zone==='foundation') r=this.selIsTop(sel)?this.eng.moveToFoundation(sel):{ok:false};
       else if(loc.zone==='tableau') r=this.eng.moveToTableau(sel,loc.col);
       else r={ok:false};
       if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
         if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
-      else { Sfx.bad(); Vox.play('illegal'); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
+      else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
     if(loc.zone==='foundation') return;
     // else select the sequence (R1)
     if(loc.zone==='waste'){ this.view.selected={zone:'waste'}; }
-    else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col}; }
+    else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx}; }
     this.view.render(this); Sfx.click();
   }
   onPileTap(pile){
     const sel=this.view.selected; if(!sel) return;
     const z=pile.dataset.zone; let r;
-    if(z==='foundation') r=this.eng.moveToFoundation(sel);
+    if(z==='foundation') r=this.selIsTop(sel)?this.eng.moveToFoundation(sel):{ok:false};
     else r=this.eng.moveToTableau(sel,+pile.dataset.col);
     if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
       if(z==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
-    else { Sfx.bad(); Vox.play('illegal'); this.say('That move is not legal.'); }
+    else { Sfx.bad(); this.say('That move is not legal.'); }
   }
   doHint(){
     if(this.messy) return;
@@ -1899,7 +1929,8 @@ const Music={
    Radio Paradise rock mix first, SomaFM 70s as fallback. plain on/off. */
 const Radio={
   on:false, idx:0, audio:null, el:null,
-  streams:['https://stream.radioparadise.com/rock-320',
+  streams:['https://icecast.walmradio.com:8443/classic',
+           'https://stream.radioparadise.com/rock-320',
            'https://ice1.somafm.com/seventies-128-mp3'],
   init(){ this.audio=$('#radioAudio'); this.el=$('#bRadio'); this.audio.volume=0.7;
     this.audio.addEventListener('error',()=>{ // stream dead? try the next one
