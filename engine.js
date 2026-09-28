@@ -55,9 +55,9 @@ class GameEngine {
     this.state = null;
   }
 
-  newGame(drawCount, rng) {
+  newGame(drawCount, rng, customDeck) {
     this.history = [];
-    const deck = shuffle(makeDeck(), rng);
+    const deck = customDeck ? customDeck.map(c => ({ ...c })) : shuffle(makeDeck(), rng);
     const v = this.variant;
     const tableau = [];
     for (let c = 0; c < v.tableauCount; c++) {
@@ -302,7 +302,213 @@ class GameEngine {
   }
 }
 
+function isSolvable(dealState, drawCount, timeoutMs = 800) {
+  const startTime = Date.now();
+
+  function cloneCard(c) {
+    return { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp };
+  }
+
+  function cloneState(s) {
+    return {
+      stock: s.stock.map(cloneCard),
+      waste: s.waste.map(cloneCard),
+      foundations: {
+        spades: s.foundations.spades.map(cloneCard),
+        hearts: s.foundations.hearts.map(cloneCard),
+        diamonds: s.foundations.diamonds.map(cloneCard),
+        clubs: s.foundations.clubs.map(cloneCard)
+      },
+      tableau: s.tableau.map(col => col.map(cloneCard))
+    };
+  }
+
+  function topOf(arr) { return arr[arr.length - 1]; }
+
+  function canPlaceOnFoundation(card, f) {
+    const pile = f[card.suit];
+    if (!pile.length) return card.rank === 1;
+    return topOf(pile).rank === card.rank - 1;
+  }
+
+  function isSafeForFoundation(card, f) {
+    if (card.rank <= 2) return true;
+    const need = card.rank - 1;
+    const opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
+    return opp.every(s => f[s].length && topOf(f[s]).rank >= need);
+  }
+
+  function canPlaceOnTableau(cards, col) {
+    if (!cards.length) return false;
+    const first = cards[0];
+    if (!col.length) return first.rank === 13;
+    const top = topOf(col);
+    return top.faceUp && top.red !== first.red && top.rank === first.rank + 1;
+  }
+
+  function movableSeq(col) {
+    let i = col.length - 1;
+    while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
+           col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
+    if (!col[i] || !col[i].faceUp) return [];
+    return col.slice(i);
+  }
+
+  function autoFoundation(s) {
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let c = 0; c < 7; c++) {
+        const col = s.tableau[c];
+        if (!col.length) continue;
+        const t = topOf(col);
+        if (t && t.faceUp && canPlaceOnFoundation(t, s.foundations) && isSafeForFoundation(t, s.foundations)) {
+          s.foundations[t.suit].push(col.pop());
+          if (col.length && !topOf(col).faceUp) topOf(col).faceUp = true;
+          moved = true;
+          break;
+        }
+      }
+      if (moved) continue;
+      if (s.waste.length) {
+        const w = topOf(s.waste);
+        if (w && canPlaceOnFoundation(w, s.foundations) && isSafeForFoundation(w, s.foundations)) {
+          s.foundations[w.suit].push(s.waste.pop());
+          moved = true;
+        }
+      }
+    }
+  }
+
+  function isWon(s) {
+    const totalF = s.foundations.spades.length + s.foundations.hearts.length +
+                   s.foundations.diamonds.length + s.foundations.clubs.length;
+    if (totalF === 52) return true;
+    for (let c = 0; c < 7; c++) {
+      for (const card of s.tableau[c]) {
+        if (!card.faceUp) return false;
+      }
+    }
+    return !s.stock.length && !s.waste.length;
+  }
+
+  function stateKey(s) {
+    const st = s.stock.map(c => c.id).join(',');
+    const w = s.waste.map(c => c.id).join(',');
+    const f = `${s.foundations.spades.length},${s.foundations.hearts.length},${s.foundations.diamonds.length},${s.foundations.clubs.length}`;
+    const tab = s.tableau.map(col => col.map(c => (c.faceUp ? 'u' : 'd') + c.id).join(',')).join('|');
+    return `${st};${w};${f};${tab}`;
+  }
+
+  const visited = new Set();
+  const stack = [cloneState(dealState)];
+
+  while (stack.length > 0) {
+    if ((visited.size & 127) === 0 && Date.now() - startTime > timeoutMs) return false;
+
+    const curr = stack.pop();
+    autoFoundation(curr);
+    if (isWon(curr)) return true;
+
+    const key = stateKey(curr);
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const moves = [];
+
+    // 1. Foundation moves
+    for (let c = 0; c < 7; c++) {
+      const col = curr.tableau[c];
+      if (col.length) {
+        const t = topOf(col);
+        if (t && t.faceUp && canPlaceOnFoundation(t, curr.foundations)) {
+          const next = cloneState(curr);
+          const card = next.tableau[c].pop();
+          next.foundations[card.suit].push(card);
+          if (next.tableau[c].length && !topOf(next.tableau[c]).faceUp) {
+            topOf(next.tableau[c]).faceUp = true;
+          }
+          moves.push({ state: next, prio: 10 });
+        }
+      }
+    }
+    if (curr.waste.length) {
+      const w = topOf(curr.waste);
+      if (w && canPlaceOnFoundation(w, curr.foundations)) {
+        const next = cloneState(curr);
+        const card = next.waste.pop();
+        next.foundations[card.suit].push(card);
+        moves.push({ state: next, prio: 10 });
+      }
+    }
+
+    // 2. Tableau to Tableau
+    for (let fromC = 0; fromC < 7; fromC++) {
+      const col = curr.tableau[fromC];
+      if (!col.length) continue;
+      const seq = movableSeq(col);
+      if (!seq.length) continue;
+      const runStart = col.length - seq.length;
+      const exposesFaceDown = runStart > 0 && !col[runStart - 1].faceUp;
+
+      for (let toC = 0; toC < 7; toC++) {
+        if (fromC === toC) continue;
+        if (canPlaceOnTableau(seq, curr.tableau[toC])) {
+          if (seq[0].rank === 13 && runStart === 0 && !curr.tableau[toC].length) continue;
+
+          const next = cloneState(curr);
+          const movedCards = next.tableau[fromC].splice(runStart);
+          next.tableau[toC].push(...movedCards);
+          if (next.tableau[fromC].length && !topOf(next.tableau[fromC]).faceUp) {
+            topOf(next.tableau[fromC]).faceUp = true;
+          }
+          moves.push({ state: next, prio: exposesFaceDown ? 8 : 4 });
+        }
+      }
+    }
+
+    // 3. Waste to Tableau
+    if (curr.waste.length) {
+      const w = topOf(curr.waste);
+      for (let toC = 0; toC < 7; toC++) {
+        if (canPlaceOnTableau([w], curr.tableau[toC])) {
+          const next = cloneState(curr);
+          const card = next.waste.pop();
+          next.tableau[toC].push(card);
+          moves.push({ state: next, prio: 6 });
+        }
+      }
+    }
+
+    // 4. Draw / Recycle
+    if (curr.stock.length || curr.waste.length) {
+      const next = cloneState(curr);
+      if (!next.stock.length) {
+        while (next.waste.length) {
+          const c = next.waste.pop();
+          c.faceUp = false;
+          next.stock.push(c);
+        }
+      } else {
+        for (let i = 0; i < (drawCount || 1) && next.stock.length; i++) {
+          const c = next.stock.pop();
+          c.faceUp = true;
+          next.waste.push(c);
+        }
+      }
+      moves.push({ state: next, prio: 2 });
+    }
+
+    moves.sort((a, b) => a.prio - b.prio);
+    for (const m of moves) stack.push(m.state);
+  }
+
+  return false;
+}
+
+GameEngine.isSolvable = isSolvable;
+
 // node export guard — in the browser this file is a classic script (no module system)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { GameEngine, KLONDIKE, SUITS, SUIT_SYMBOL, makeDeck, shuffle, cardName, rankLabel };
+  module.exports = { GameEngine, KLONDIKE, SUITS, SUIT_SYMBOL, makeDeck, shuffle, cardName, rankLabel, isSolvable };
 }

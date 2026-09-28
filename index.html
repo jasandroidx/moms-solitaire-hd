@@ -504,6 +504,7 @@ body[data-scene]::after{
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
+  <button class="btn sm" id="bWinnableToggle" title="Toggle winnable deals">Winnable: OFF</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
   <button class="btn" id="bHint">Hint</button>
@@ -998,6 +999,7 @@ class UI {
     this.eng=new GameEngine(KLONDIKE);
     this.view=new Renderer(this.eng);
     this.drawCount=store.get('drawCount',1);
+    this.winnableDeal=store.get('winnableDeal',false);
     this.photoDeck=store.get('photoDeck',[]);
     this.backPhoto=store.get('backPhoto',null);
     this.surprise=store.get('surprise',CUSTOM.surprise);
@@ -1086,19 +1088,43 @@ class UI {
   finishDeal(announce){
     this.messy=false;
     this.drawCount=store.get('drawCount',1); // pending draw setting takes effect on the new game only
-    this.eng.newGame(this.drawCount);
-    this._backPhotos={}; // reshuffle the photo backs for the new game
-    this._kingHeartsPlayed=false; // 👑 king-of-hearts gag resets each game
-    if(this.surprise==='game') this.pickSurprise(true);
-    this.view.selected=null; this.view.hintCard=null;
-    this.view.render(this); this.updateStats();
-    // deal animation: cards cascade in
-    requestAnimationFrame(()=>{ let i=0;
-      const cards=document.querySelectorAll('#board .card:not(.messcard)');
-      cards.forEach(c=>{ c.classList.add('deal'); c.style.animationDelay=(i++*20)+'ms'; });
-      setTimeout(()=>cards.forEach(c=>{ c.classList.remove('deal'); c.style.animationDelay=''; }), i*20+700); });
-    if(announce!==false) this.say('New game dealt. Good luck, '+this.playerName+'!');
-    this.undoCount=0; this.scheduleFakeUpdate();
+
+    const setupDeal=(deck)=>{
+      if(deck) this.eng.newGame(this.drawCount, null, deck);
+      else this.eng.newGame(this.drawCount);
+      this._backPhotos={}; // reshuffle the photo backs for the new game
+      this._kingHeartsPlayed=false; // 👑 king-of-hearts gag resets each game
+      if(this.surprise==='game') this.pickSurprise(true);
+      this.view.selected=null; this.view.hintCard=null;
+      this.view.render(this); this.updateStats();
+      // deal animation: cards cascade in
+      requestAnimationFrame(()=>{ let i=0;
+        const cards=document.querySelectorAll('#board .card:not(.messcard)');
+        cards.forEach(c=>{ c.classList.add('deal'); c.style.animationDelay=(i++*20)+'ms'; });
+        setTimeout(()=>cards.forEach(c=>{ c.classList.remove('deal'); c.style.animationDelay=''; }), i*20+700); });
+      if(announce!==false) this.say('New game dealt. Good luck, '+this.playerName+'!');
+      this.undoCount=0; this.scheduleFakeUpdate();
+    };
+
+    if(this.winnableDeal){
+      this.say('shuffling...');
+      const tStart=Date.now();
+      const tryDeal=()=>{
+        const deck=shuffle(makeDeck());
+        const tempEngine=new GameEngine(KLONDIKE);
+        const st=tempEngine.newGame(this.drawCount, null, deck);
+        if(isSolvable(st, this.drawCount, 300)){
+          setupDeal(deck);
+        } else if(Date.now()-tStart >= 3000){
+          setupDeal(); // fallback to random deal after ~3s cap
+        } else {
+          setTimeout(tryDeal, 10);
+        }
+      };
+      setTimeout(tryDeal, 10);
+    } else {
+      setupDeal();
+    }
   }
   say(msg){ $('#announcer').textContent=msg; const hb=$('#hintbar');
     hb.classList.remove('whisper');
@@ -1541,6 +1567,17 @@ class UI {
       p.addEventListener('click',e=>{ if(e.target.closest('.card')) return; this.onPileTap(p); });
     });
     $('#bDeal').onclick=()=>this.newDeal();
+    const btnWinnable=$('#bWinnableToggle');
+    if(btnWinnable){
+      btnWinnable.textContent=this.winnableDeal?'Winnable: ON':'Winnable: OFF';
+      btnWinnable.onclick=()=>{
+        this.winnableDeal=!this.winnableDeal;
+        store.set('winnableDeal',this.winnableDeal);
+        btnWinnable.textContent=this.winnableDeal?'Winnable: ON':'Winnable: OFF';
+        Sfx.click();
+        this.say(this.winnableDeal?'Winnable deals turned ON.':'Winnable deals turned OFF.');
+      };
+    }
     $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
     $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
