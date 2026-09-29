@@ -504,7 +504,7 @@ body[data-scene]::after{
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
-  <button class="btn" id="bDaily">Daily Deal</button>
+  <button class="btn sm" id="bWinnableToggle" title="Toggle winnable deals">Winnable: OFF</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
   <button class="btn" id="bHint">Hint</button>
@@ -857,8 +857,7 @@ class Renderer {
     // waste: fan last 3
     this.clearPile(this.wasteEl);
     const show=s.waste.slice(-3);
-    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
-    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
+    const cw=this.stockEl.getBoundingClientRect().width||96;
     const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});
@@ -1013,9 +1012,6 @@ class UI {
     this.design=store.get('design','classic');
     this.playerName=store.get('playerName','Mom');
     this.stats=store.get('stats',{games:0,wins:0,best:{}});
-    this.dailyStats=store.get('daily_stats',{}); // date -> { bestTime, bestMoves, won }
-    this.isDaily=false;
-    this.dailyDate=null;
     this.startTime=null; this.timerId=null; this.won=false;
     this.drag=null;
     this.applyTheme(); this.applyName(); this.applyDesign();
@@ -1027,29 +1023,8 @@ class UI {
     setInterval(()=>{ if(this.surprise==='timed'&&!this.won&&Date.now()-this.lastSwap>CUSTOM.surpriseSec*1000) this.pickSurprise(); },15000);
   }
   /* ---------- game flow ---------- */
-  todayStr(){
-    const d=new Date();
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  }
-  startDailyDeal(){
-    Sfx.click(); this.clearWinShow(); this.floatUp();
-    this.isDaily=true;
-    this.dailyDate=this.todayStr();
-    const cards=[...document.querySelectorAll('#board .card')];
-    cards.forEach(c=>{
-      const d=(0.9+Math.random()*0.5).toFixed(2), dl=(Math.random()*0.4).toFixed(2);
-      c.style.transition=`transform ${d}s ease-in ${dl}s, opacity ${d}s ease-in ${dl}s`;
-      c.style.transform=`translate(${(Math.random()*200-100).toFixed(0)}px,${(-(innerHeight+200)).toFixed(0)}px) rotate(${(Math.random()*70-35).toFixed(0)}deg)`;
-      c.style.opacity='0';
-    });
-    setTimeout(()=>this.newGame(true, true),1150);
-  }
-  newGame(announce, preserveDaily){
+  newGame(announce){
     this.clearWinShow();
-    if(!preserveDaily){
-      this.isDaily=false;
-      this.dailyDate=null;
-    }
     this.stats.games++; store.set('stats',this.stats);
     this._messAnnounce=announce;
     this.enterMessy();
@@ -1198,19 +1173,7 @@ class UI {
   stopTimer(){ clearInterval(this.timerId); this.timerId=null; }
   updateStats(){
     const d=this.eng.describe();
-    let label = `${this.tick()} · ${d.moves} moves<br>`;
-    if(this.isDaily && this.dailyDate){
-      const ds = this.dailyStats[this.dailyDate];
-      if(ds && ds.won){
-        const bm = Math.floor(ds.bestTime/60)+':'+String(ds.bestTime%60).padStart(2,'0');
-        label += `📅 Daily (${this.dailyDate}) Best: ${bm} (${ds.bestMoves}m)`;
-      } else {
-        label += `📅 Daily (${this.dailyDate})`;
-      }
-    } else {
-      label += `${this.stats.wins} won`;
-    }
-    $('#stats').innerHTML=label;
+    $('#stats').innerHTML=`${this.tick()} · ${d.moves} moves<br>${this.stats.wins} won`;
   }
   afterMove(msg){
     this.ensureTimer(); this.view.render(this); this.updateStats();
@@ -1224,30 +1187,13 @@ class UI {
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
     this.stats.wins++; store.set('stats',this.stats);
     const secs=Math.floor((Date.now()-this.startTime)/1000);
-    const moves=this.eng.state.moves;
     const bk=this.stats.best[this.drawCount]||Infinity;
     if(secs<bk){ this.stats.best[this.drawCount]=secs; store.set('stats',this.stats); }
-
-    let dailyNewBest = false;
-    if(this.isDaily && this.dailyDate){
-      const ds = this.dailyStats[this.dailyDate] || { bestTime: Infinity, bestMoves: Infinity, won: false };
-      ds.won = true;
-      if(secs < ds.bestTime) { ds.bestTime = secs; dailyNewBest = true; }
-      if(moves < ds.bestMoves) { ds.bestMoves = moves; dailyNewBest = true; }
-      this.dailyStats[this.dailyDate] = ds;
-      store.set('daily_stats', this.dailyStats);
-    }
-
     Sfx.win(); Vox.play('win'); this.winShow();
     if(this.stats.wins===1) setTimeout(()=>this.bonusVideo(),4500); // first win ever: bonus video
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
-    let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
-    if(this.isDaily && this.dailyDate){
-      winMsg += dailyNewBest ? ` — new Daily best! 📅🏅` : ` (Daily Deal ${this.dailyDate})`;
-    } else {
-      winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
-    }
-    $('#winstats').textContent=winMsg;
+    $('#winstats').textContent=`${this.tick()} · ${this.eng.state.moves} moves · Draw ${this.drawCount}`+
+      (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
     setTimeout(()=>$('#winoverlay').classList.add('show'),900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
@@ -1718,13 +1664,7 @@ class UI {
       const start=colTopIdx(col,this.eng.movableSequence(d.loc.col));
       seq=col.slice(Math.max(d.loc.idx,start));
     }
-    // Ordering/connection constraint: verify d.el is connected before reading layout; re-query if detached by a re-render
-    if(!d.el||!d.el.isConnected){
-      const re=d.el&&d.el.dataset.cid?$('#board [data-cid="'+d.el.dataset.cid+'"]'):null;
-      if(re&&re.isConnected) d.el=re; else return;
-    }
     const r=d.el.getBoundingClientRect();
-    if(!r.width) return;
     const cw=r.width, offU=cw*0.30;
     d.ghosts=seq.map((c,i)=>{
       const g=this.view.cardEl(c,{photo:!!this.backPhoto,backPat:this.backPat});
@@ -1748,8 +1688,6 @@ class UI {
   updateDropHint(d){
     document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
     if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
-    // Ordering/connection constraint: ghost element must be connected to DOM before measuring layout
-    if(!d.ghosts[0].isConnected) return;
     const gx=d.ghosts[0].getBoundingClientRect();
     const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
     if(!pile) return;
@@ -1766,8 +1704,6 @@ class UI {
   pileAt(x,y){
     let best=null,bestD=Infinity;
     document.querySelectorAll('.pile,.tcol').forEach(p=>{
-      // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
-      if(!p.isConnected) return;
       const r=p.getBoundingClientRect(), pad=16;
       if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
       const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
@@ -1785,8 +1721,8 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
-    // Ordering/connection constraint: read ghost rect BEFORE clearing #draglayer; ensure ghost is connected
-    const gx=(d&&d.ghosts&&d.ghosts[0]&&d.ghosts[0].isConnected)?d.ghosts[0].getBoundingClientRect():null;
+    // read the drop point BEFORE clearing the layer: a detached ghost reports a zero rect
+    const gx=(d&&d.ghosts&&d.ghosts[0])?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
@@ -1901,8 +1837,7 @@ class UI {
     let clicks=0, chases=0;
     const btn=$('#bPlay'); btn.textContent='▶ Play';
     const corner=()=>{
-      // Ordering/connection constraint: button must be connected to DOM when measuring layout; fall back if zero/detached
-      const pad=16, w=(btn&&btn.isConnected?btn.offsetWidth:0)||120, h=(btn&&btn.isConnected?btn.offsetHeight:0)||44;
+      const pad=16, w=btn.offsetWidth||120, h=btn.offsetHeight||44;
       const spots=[
         {l:pad, t:pad},
         {l:Math.max(pad, window.innerWidth-w-pad), t:pad},
@@ -1943,8 +1878,7 @@ class UI {
     Sfx.flip(); Vox.play('idle', this.idleStage); Vox.play('wiggle');
     if(this.theme==='aquarium'&&Math.random()<0.18) setTimeout(()=>Vox.play('whale'), 800); // 🐋 a distant whale drifts by
     document.querySelectorAll('#tableau .card').forEach((c,i)=>{
-      // Ordering/connection constraint: card must be connected to DOM before forcing reflow
-      if(i%3===0&&c.isConnected){ c.classList.remove('wiggle'); void c.offsetWidth; c.classList.add('wiggle'); } });
+      if(i%3===0){ c.classList.remove('wiggle'); void c.offsetWidth; c.classList.add('wiggle'); } });
     if(this.idleStage>=2) this.pickSurprise(true);
     this.idleStage++;
     this.idleT=setTimeout(()=>this.onIdle(), CUSTOM.idleSec*1000);
@@ -2080,9 +2014,7 @@ const Lens={
   },
   schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
   refresh(){
-    // Ordering/connection constraint: do not read layout or clone board if Lens is inactive or board is detached/hidden
-    if(!this.on) return;
-    const board=$('#board'); if(!board||!board.isConnected) return;
+    const board=$('#board'); if(!board) return;
     const r=board.getBoundingClientRect();
     this.bw=r.width; this.bh=r.height; this.bx=r.left; this.by=r.top;
     this.view.style.width=r.width+'px'; this.view.style.height=r.height+'px';
