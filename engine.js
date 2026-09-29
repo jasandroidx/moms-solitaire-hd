@@ -70,9 +70,9 @@ class GameEngine {
     this.state = null;
   }
 
-  newGame(drawCount, rng) {
+  newGame(drawCount, rng, customDeck) {
     this.history = [];
-    const deck = shuffle(makeDeck(), rng);
+    const deck = customDeck ? customDeck.map(c => ({ ...c })) : shuffle(makeDeck(), rng);
     const v = this.variant;
     const tableau = [];
     for (let c = 0; c < v.tableauCount; c++) {
@@ -317,7 +317,130 @@ class GameEngine {
   }
 }
 
+// ---- winnable-deal solver: depth-first search with safe-move reduction ----
+// Returns true if the given deal state can be played to a win. Timeout in
+// ms caps the search; on timeout it returns false (treat as unsolved).
+function isSolvable(dealState, drawCount, timeoutMs) {
+  timeoutMs = timeoutMs || 800;
+  const t0 = Date.now();
+  const top = a => a[a.length - 1];
+  const cloneCard = c => ({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp });
+  const cloneState = s => ({
+    stock: s.stock.map(cloneCard), waste: s.waste.map(cloneCard),
+    foundations: {
+      spades: s.foundations.spades.map(cloneCard), hearts: s.foundations.hearts.map(cloneCard),
+      diamonds: s.foundations.diamonds.map(cloneCard), clubs: s.foundations.clubs.map(cloneCard)
+    },
+    tableau: s.tableau.map(col => col.map(cloneCard))
+  });
+  const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
+  // a card is safe to auto-foundation when both opposite-color lower cards are already home
+  const safeF = (card, f) => {
+    if (card.rank <= 2) return true;
+    const need = card.rank - 1, opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
+    return opp.every(s => f[s].length && top(f[s]).rank >= need);
+  };
+  const canT = (seq, col) => {
+    if (!seq.length) return false;
+    const first = seq[0];
+    if (!col.length) return first.rank === 13;
+    const t = top(col);
+    return t.faceUp && t.red !== first.red && t.rank === first.rank + 1;
+  };
+  const movSeq = col => {
+    let i = col.length - 1;
+    while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
+           col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
+    return (col[i] && col[i].faceUp) ? col.slice(i) : [];
+  };
+  // eagerly play provably-safe foundation moves (shrinks the search space hugely)
+  const autoF = s => {
+    let moved = true;
+    while (moved) {
+      moved = false;
+      for (let c = 0; c < 7; c++) {
+        const col = s.tableau[c]; if (!col.length) continue;
+        const t = top(col);
+        if (t.faceUp && canF(t, s.foundations) && safeF(t, s.foundations)) {
+          s.foundations[t.suit].push(col.pop());
+          if (col.length && !top(col).faceUp) top(col).faceUp = true;
+          moved = true; break;
+        }
+      }
+      if (!moved && s.waste.length) {
+        const w = top(s.waste);
+        if (canF(w, s.foundations) && safeF(w, s.foundations)) { s.foundations[w.suit].push(s.waste.pop()); moved = true; }
+      }
+    }
+  };
+  const won = s => {
+    let f = 0; for (const k of ['spades', 'hearts', 'diamonds', 'clubs']) f += s.foundations[k].length;
+    if (f === 52) return true;
+    // everything free => the game's auto-finish guarantees the win (mirrors canAutoComplete)
+    if (s.stock.length || s.waste.length) return false;
+    return s.tableau.every(col => col.every(c => c.faceUp));
+  };
+  const key = s => s.stock.map(c => c.id).join(',') + ';' + s.waste.map(c => c.id).join(',') + ';' +
+    ['spades', 'hearts', 'diamonds', 'clubs'].map(k => s.foundations[k].length).join(',') + ';' +
+    s.tableau.map(col => col.map(c => (c.faceUp ? 'u' : 'd') + c.id).join(',')).join('|');
+  const seen = new Set(), stack = [cloneState(dealState)];
+  while (stack.length) {
+    if ((seen.size & 63) === 0 && Date.now() - t0 > timeoutMs) return false;
+    const cur = stack.pop();
+    autoF(cur);
+    if (won(cur)) return true;
+    const k = key(cur);
+    if (seen.has(k)) continue;
+    seen.add(k);
+    const moves = [];
+    for (let c = 0; c < 7; c++) { // tableau -> foundation
+      const col = cur.tableau[c]; if (!col.length) continue;
+      const t = top(col);
+      if (t.faceUp && canF(t, cur.foundations)) {
+        const n = cloneState(cur), card = n.tableau[c].pop();
+        n.foundations[card.suit].push(card);
+        if (n.tableau[c].length && !top(n.tableau[c]).faceUp) top(n.tableau[c]).faceUp = true;
+        moves.push([10, n]);
+      }
+    }
+    if (cur.waste.length) { // waste -> foundation
+      const w = top(cur.waste);
+      if (canF(w, cur.foundations)) { const n = cloneState(cur); n.foundations[w.suit].push(n.waste.pop()); moves.push([10, n]); }
+    }
+    for (let a = 0; a < 7; a++) { // tableau -> tableau
+      const col = cur.tableau[a]; if (!col.length) continue;
+      const seq = movSeq(col); if (!seq.length) continue;
+      const rs = col.length - seq.length, exposes = rs > 0 && !col[rs - 1].faceUp;
+      for (let b = 0; b < 7; b++) {
+        if (a === b || !canT(seq, cur.tableau[b])) continue;
+        if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
+        const n = cloneState(cur), mv = n.tableau[a].splice(rs);
+        n.tableau[b].push(...mv);
+        if (n.tableau[a].length && !top(n.tableau[a]).faceUp) top(n.tableau[a]).faceUp = true;
+        moves.push([exposes ? 8 : 4, n]);
+      }
+    }
+    if (cur.waste.length) { // waste -> tableau
+      const w = top(cur.waste);
+      for (let b = 0; b < 7; b++) {
+        if (!canT([w], cur.tableau[b])) continue;
+        const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); moves.push([6, n]);
+      }
+    }
+    if (cur.stock.length || cur.waste.length) { // draw / recycle
+      const n = cloneState(cur);
+      if (!n.stock.length) { while (n.waste.length) { const c = n.waste.pop(); c.faceUp = false; n.stock.push(c); } }
+      else for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) { const c = n.stock.pop(); c.faceUp = true; n.waste.push(c); }
+      moves.push([2, n]);
+    }
+    moves.sort((x, y) => x[0] - y[0]);
+    for (const m of moves) stack.push(m[1]);
+  }
+  return false;
+}
+GameEngine.isSolvable = isSolvable;
+
 // node export guard — in the browser this file is a classic script (no module system)
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { GameEngine, KLONDIKE, SUITS, SUIT_SYMBOL, makeDeck, shuffle, cardName, rankLabel, seedPRNG };
+  module.exports = { GameEngine, KLONDIKE, SUITS, SUIT_SYMBOL, makeDeck, shuffle, cardName, rankLabel, seedPRNG, isSolvable };
 }
