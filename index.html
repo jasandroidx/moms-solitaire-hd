@@ -515,6 +515,7 @@ body[data-scene]::after{
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
   <button class="btn" id="bDaily">Daily Deal</button>
+  <button class="btn" id="bWinnable">Winnable: OFF</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
   <button class="btn" id="bBig">Big Cards</button>
@@ -1032,6 +1033,7 @@ class UI {
     this.eng=new GameEngine(KLONDIKE);
     this.view=new Renderer(this.eng);
     this.drawCount=store.get('drawCount',1);
+    this.winnableDeal=store.get('winnableDeal',false); // every dealt hand is beatable
     this.photoDeck=store.get('photoDeck',[]);
     this.backPhoto=store.get('backPhoto',null);
     this.surprise=store.get('surprise',CUSTOM.surprise);
@@ -1145,23 +1147,45 @@ class UI {
   finishDeal(announce){
     this.messy=false;
     this.drawCount=store.get('drawCount',1); // pending draw setting takes effect on the new game only
+    const setupDeal=()=>{
+      this._backPhotos={}; // reshuffle the photo backs for the new game
+      this._kingHeartsPlayed=false; // 👑 king-of-hearts gag resets each game
+      if(this.surprise==='game') this.pickSurprise(true);
+      this.view.selected=null; this.view.hintCard=null;
+      this.view.render(this); this.updateStats();
+      // deal animation: cards cascade in
+      requestAnimationFrame(()=>{ let i=0;
+        const cards=document.querySelectorAll('#board .card:not(.messcard)');
+        cards.forEach(c=>{ c.classList.add('deal'); c.style.animationDelay=(i++*20)+'ms'; });
+        setTimeout(()=>cards.forEach(c=>{ c.classList.remove('deal'); c.style.animationDelay=''; }), i*20+700); });
+      if(announce!==false) this.say('New game dealt. Good luck, '+this.playerName+'!');
+      this.undoCount=0; this.scheduleFakeUpdate();
+    };
     if(this.isDaily && this.dailyDate){
+      // daily stays seeded: same deal for everyone, untouched by the winnable toggle
       this.eng.newGame(this.drawCount, seedPRNG(this.dailyDate));
+      setupDeal();
+    } else if(this.winnableDeal){
+      // sample random deals until the solver proves one beatable (async, capped ~3s)
+      this.say('Shuffling up a winnable deal…');
+      const t0=Date.now();
+      const attempt=()=>{
+        const deck=shuffle(makeDeck());
+        const probe=new GameEngine(KLONDIKE);
+        const st=probe.newGame(this.drawCount, null, deck);
+        if(GameEngine.isSolvable(st, this.drawCount, 250)){
+          this.eng.newGame(this.drawCount, null, deck);
+          setupDeal();
+        } else if(Date.now()-t0>3000){
+          this.eng.newGame(this.drawCount); // fallback: plain random deal
+          setupDeal();
+        } else setTimeout(attempt, 0);
+      };
+      setTimeout(attempt, 30);
     } else {
       this.eng.newGame(this.drawCount);
+      setupDeal();
     }
-    this._backPhotos={}; // reshuffle the photo backs for the new game
-    this._kingHeartsPlayed=false; // 👑 king-of-hearts gag resets each game
-    if(this.surprise==='game') this.pickSurprise(true);
-    this.view.selected=null; this.view.hintCard=null;
-    this.view.render(this); this.updateStats();
-    // deal animation: cards cascade in
-    requestAnimationFrame(()=>{ let i=0;
-      const cards=document.querySelectorAll('#board .card:not(.messcard)');
-      cards.forEach(c=>{ c.classList.add('deal'); c.style.animationDelay=(i++*20)+'ms'; });
-      setTimeout(()=>cards.forEach(c=>{ c.classList.remove('deal'); c.style.animationDelay=''; }), i*20+700); });
-    if(announce!==false) this.say('New game dealt. Good luck, '+this.playerName+'!');
-    this.undoCount=0; this.scheduleFakeUpdate();
   }
   say(msg){ $('#announcer').textContent=msg; const hb=$('#hintbar');
     hb.classList.remove('whisper');
@@ -1679,6 +1703,11 @@ class UI {
     });
     $('#bDeal').onclick=()=>this.newDeal();
     $('#bDaily').onclick=()=>this.startDailyDeal();
+    const bW=$('#bWinnable');
+    const paintW=()=>{ bW.textContent='Winnable: '+(this.winnableDeal?'ON':'OFF'); };
+    paintW();
+    bW.onclick=()=>{ Sfx.click(); this.winnableDeal=!this.winnableDeal; store.set('winnableDeal',this.winnableDeal);
+      paintW(); this.say(this.winnableDeal?'Winnable deals ON — every hand will be beatable.':'Winnable deals OFF.'); };
     $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
     $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
