@@ -5,6 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mom's Solitaire</title>
 <link rel="icon" href="favicon.png" type="image/png">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="theme-color" content="#0b3d24">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mom's Solitaire">
 <style>
 /* R3: every color is a variable — themes just swap these */
 :root{
@@ -120,6 +126,10 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 @keyframes bonuspop{from{transform:scale(.6);opacity:0;}to{transform:scale(1);opacity:1;}}
 #bonusshow video{max-width:100vw;max-height:100vh;}
 #bonusshow .bonus-close{position:absolute;top:12px;right:12px;font-size:22px;background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:12px;padding:8px 14px;cursor:pointer;}
+#bonusshow .bonus-load{width:min(420px,80vw);text-align:center;}
+#bonusshow .bonus-bar{height:14px;border-radius:8px;background:rgba(255,255,255,.18);overflow:hidden;}
+#bonusshow .bonus-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffd75e,#ff9d5e);border-radius:8px;transition:width .2s;}
+#bonusshow .bonus-pct{margin-top:10px;color:#ffe9a8;font-size:18px;font-weight:700;}
 .wchip{position:absolute;left:0;top:0;width:44px;height:60px;background:linear-gradient(135deg,#fff,#f3ead8);
   border-radius:7px;box-shadow:0 3px 8px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;
   font-size:19px;font-weight:700;will-change:transform;}
@@ -507,6 +517,7 @@ body[data-scene]::after{
   <button class="btn" id="bDaily">Daily Deal</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
+  <button class="btn" id="bBig">Big Cards</button>
   <button class="btn" id="bHint">Hint</button>
   <button class="btn" id="bStyle">Style</button>
   <button class="btn" id="bScenery">Scenery Change</button>
@@ -609,7 +620,28 @@ const Sfx = {
   },
   click(){ this.tone(660,.07,'triangle',.08); },
   flip(){ this.tone(440,.06,'triangle',.06); this.tone(660,.06,'triangle',.05,.05); },
-  bad(){ this.tone(540,.06,'square',.045); this.tone(405,.07,'square',.045,.06); },
+  bad(){ this.fart(); },
+  /* illegal-move raspberry: 3 randomized synth farts */
+  fart(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const ctx=this.ctx, t0=ctx.currentTime+0.01;
+    const cfg=[{d:0.25,f:90,fl:30},{d:0.5,f:65,fl:22},{d:0.16,f:120,fl:38}][(Math.random()*3)|0];
+    const o=ctx.createOscillator(); o.type='sawtooth';
+    o.frequency.setValueAtTime(cfg.f,t0);
+    o.frequency.exponentialRampToValueAtTime(Math.max(30,cfg.f*0.6),t0+cfg.d);
+    const g=ctx.createGain();
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);
+    g.gain.exponentialRampToValueAtTime(0.001,t0+cfg.d);
+    const lfo=ctx.createOscillator(); lfo.type='square'; lfo.frequency.value=cfg.fl; // the flutter
+    const lg=ctx.createGain(); lg.gain.value=0.12;
+    lfo.connect(lg); lg.connect(g.gain);
+    const lfo2=ctx.createOscillator(); lfo2.type='sine'; lfo2.frequency.value=cfg.fl*0.5; // pitch wobble
+    const lg2=ctx.createGain(); lg2.gain.value=cfg.f*0.25;
+    lfo2.connect(lg2); lg2.connect(o.frequency);
+    o.connect(g); g.connect(ctx.destination);
+    [o,lfo,lfo2].forEach(n=>{ n.start(t0); n.stop(t0+cfg.d+0.05); });
+  },
   fanfare(){ [392,523,659,784,1047].forEach((f,i)=>this.tone(f,.2,'triangle',.1,i*.1)); },
   sigh(){ this.tone(330,.16,'sine',.09); this.tone(220,.3,'sine',.09,.16); },
   riffle(){ for(let i=0;i<14;i++) this.tone(180+Math.random()*700,.03,'square',.035,i*.045); },
@@ -1017,7 +1049,8 @@ class UI {
     this.dailyDate=null;
     this.startTime=null; this.timerId=null; this.won=false;
     this.drag=null;
-    this.applyTheme(); this.applyName(); this.applyDesign();
+    this.bigCards=store.get('bigCards',false);
+    this.applyTheme(); this.applyName(); this.applyDesign(); this.applyBigCards();
     this.wire();
     this.lastSwap=0;
     this.newGame(false);
@@ -1267,23 +1300,65 @@ class UI {
     if(typeof March!=='undefined') March.stop();
     const l=document.getElementById('winshow'); if(l) l.remove();
   }
-  /* first win ever: big unlock text, then the bonus video plays */
+  /* first win ever: big unlock text, then the bonus video streams in on demand (never bundled) */
   bonusVideo(){
     const radioWas=Radio.on; Radio.stop(); // radio yields to the bonus video
     const done=()=>{ layer.remove(); if(radioWas) Radio.start(); };
     const layer=document.createElement('div'); layer.id='bonusshow';
     layer.innerHTML='<div class="bonus-text">YOU UNLOCKED A BONUS VIDEO!!!</div>';
     document.body.appendChild(layer);
-    setTimeout(()=>{
-      if(!layer.isConnected) return;
-      layer.innerHTML='<video id="bonusvid" src="bonus/bonus.mp4" playsinline controls preload="auto"></video>'+
+    const PARTS=8, pn=n=>String(n).padStart(2,'0');
+    const SOURCES=[
+      'bonus/bonus.mp4.part-', // parts shipped alongside the game
+      'https://raw.githubusercontent.com/jasandroidx/moms-solitaire-hd/main/bonus/bonus.mp4.part-' // repo fallback
+    ];
+    const load=async()=>{
+      if(this._bonusURL) return this._bonusURL; // fetched once per session
+      layer.innerHTML='<div class="bonus-text">YOU UNLOCKED A BONUS VIDEO!!!</div>'+
+        '<div class="bonus-load"><div class="bonus-bar"><i></i></div><div class="bonus-pct">fetching the movie… 0%</div></div>'+
         '<button class="bonus-close" aria-label="close">✕</button>';
-      const v=layer.querySelector('#bonusvid');
-      v.muted=Sfx.muted;
       layer.querySelector('.bonus-close').onclick=e=>{ e.stopPropagation(); done(); };
-      layer.onclick=()=>{ if(v.paused) v.play().catch(()=>{}); };
-      v.onended=()=>done();
-      v.play().catch(()=>{});
+      const bar=layer.querySelector('.bonus-bar i'), pct=layer.querySelector('.bonus-pct');
+      let lastErr=null;
+      for(const base of SOURCES){
+        try{
+          const chunks=[];
+          for(let i=0;i<PARTS;i++){
+            const r=await fetch(base+pn(i));
+            if(!r.ok) throw new Error(base+' http '+r.status);
+            chunks.push(new Uint8Array(await r.arrayBuffer()));
+            const p=Math.round(((i+1)/PARTS)*100);
+            if(bar) bar.style.width=p+'%';
+            if(pct) pct.textContent='fetching the movie… '+p+'%';
+            if(!layer.isConnected) throw new Error('closed');
+          }
+          this._bonusURL=URL.createObjectURL(new Blob(chunks,{type:'video/mp4'}));
+          return this._bonusURL;
+        }catch(e){ lastErr=e; } // try the next source
+      }
+      throw lastErr||new Error('no video source');
+    };
+    setTimeout(async()=>{
+      if(!layer.isConnected) return;
+      try{
+        const url=await load();
+        if(!layer.isConnected) return;
+        layer.innerHTML='<video id="bonusvid" src="'+url+'" playsinline controls preload="auto"></video>'+
+          '<button class="bonus-close" aria-label="close">✕</button>';
+        const v=layer.querySelector('#bonusvid');
+        v.muted=Sfx.muted;
+        layer.querySelector('.bonus-close').onclick=e=>{ e.stopPropagation(); done(); };
+        layer.onclick=()=>{ if(v.paused) v.play().catch(()=>{}); };
+        v.onended=()=>done();
+        v.play().catch(()=>{});
+      }catch(e){
+        if(!layer.isConnected) return;
+        layer.innerHTML='<div class="bonus-text">The movie couldn\'t load.<br>Enjoy the win anyway! 🎉</div>'+
+          '<button class="bonus-close" aria-label="close">✕</button>';
+        layer.querySelector('.bonus-close').onclick=e=>{ e.stopPropagation(); done(); };
+        layer.onclick=()=>done();
+        setTimeout(()=>{ if(layer.isConnected) done(); },4000);
+      }
     },2600);
   }
   winChips(layer,n){
@@ -1614,6 +1689,9 @@ class UI {
     $('#bDraw').onclick=()=>{ const n=store.get('drawCount',1)===1?3:1; store.set('drawCount',n);
       $('#bDraw').textContent='Draw '+n; Sfx.click(); this.say('Next game: Draw '+n+'.'); };
     $('#bDraw').textContent='Draw '+store.get('drawCount',1);
+    // Big Cards: scales the whole board up for tired eyes; persists across games
+    $('#bBig').onclick=()=>{ Sfx.click(); this.bigCards=!this.bigCards; store.set('bigCards',this.bigCards);
+      this.applyBigCards(); this.say(this.bigCards?'Big cards on.':'Big cards off.'); };
     $('#bHint').onclick=()=>this.doHint();
     // Style: next felt color, always landing on the classic green table
     $('#bStyle').onclick=()=>{ const felts=Object.keys(TABLES).filter(k=>!TABLES[k].scene);
@@ -1927,6 +2005,20 @@ class UI {
     if(this.design==='classic') document.body.removeAttribute('data-design');
     else document.body.dataset.design=this.design;
   }
+  /* Big Cards: CSS zoom on the board. Hit-testing uses getBoundingClientRect,
+     so drags, taps, the lens and win overlays all keep working.
+     Zoom is dialed back just enough that the board never scrolls sideways. */
+  applyBigCards(){
+    const b=$('#board');
+    if(b){
+      if(this.bigCards){
+        b.style.zoom='1.28';
+        const over=document.documentElement.scrollWidth/Math.max(1,window.innerWidth);
+        if(over>1) b.style.zoom=String(1.28/over);
+      } else b.style.zoom='';
+    }
+    const btn=$('#bBig'); if(btn) btn.textContent=this.bigCards?'Big Cards ✓':'Big Cards';
+  }
   applyTheme(){
     const T=TABLES[this.theme]||TABLES.emerald;
     if(T.scene && !this.backPhoto && !this.backPinned && this.backPat!==T.scene){
@@ -2188,6 +2280,10 @@ function initFx(){
     cx.globalAlpha=1; requestAnimationFrame(loop); })();
 }
 document.addEventListener('DOMContentLoaded',()=>{ window.ui=new UI(); initFx(); });
+/* PWA: register the offline shell worker when served over http(s). file:// just skips it. */
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 </script>
 </body>
 </html>
