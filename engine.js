@@ -317,6 +317,10 @@ class GameEngine {
   }
 }
 
+// Pre-mapped lookup tables for fast state string key generation in isSolvable
+const CARD_KEY_U = Array.from({ length: 52 }, (_, i) => 'u' + i);
+const CARD_KEY_D = Array.from({ length: 52 }, (_, i) => 'd' + i);
+
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -324,15 +328,25 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   timeoutMs = timeoutMs || 800;
   const t0 = Date.now();
   const top = a => a[a.length - 1];
-  const cloneCard = c => ({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp });
+  // Performance optimization: share immutable card references; shallow copy arrays and
+  // create new card objects only when faceUp status flips (copy-on-write).
   const cloneState = s => ({
-    stock: s.stock.map(cloneCard), waste: s.waste.map(cloneCard),
+    stock: s.stock.slice(), waste: s.waste.slice(),
     foundations: {
-      spades: s.foundations.spades.map(cloneCard), hearts: s.foundations.hearts.map(cloneCard),
-      diamonds: s.foundations.diamonds.map(cloneCard), clubs: s.foundations.clubs.map(cloneCard)
+      spades: s.foundations.spades.slice(), hearts: s.foundations.hearts.slice(),
+      diamonds: s.foundations.diamonds.slice(), clubs: s.foundations.clubs.slice()
     },
-    tableau: s.tableau.map(col => col.map(cloneCard))
+    tableau: [
+      s.tableau[0].slice(), s.tableau[1].slice(), s.tableau[2].slice(),
+      s.tableau[3].slice(), s.tableau[4].slice(), s.tableau[5].slice(), s.tableau[6].slice()
+    ]
   });
+  const flipTop = col => {
+    if (col.length && !top(col).faceUp) {
+      const c = top(col);
+      col[col.length - 1] = { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: true };
+    }
+  };
   const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
@@ -363,7 +377,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         const t = top(col);
         if (t.faceUp && canF(t, s.foundations) && safeF(t, s.foundations)) {
           s.foundations[t.suit].push(col.pop());
-          if (col.length && !top(col).faceUp) top(col).faceUp = true;
+          flipTop(col);
           moved = true; break;
         }
       }
@@ -374,15 +388,33 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
   };
   const won = s => {
-    let f = 0; for (const k of ['spades', 'hearts', 'diamonds', 'clubs']) f += s.foundations[k].length;
+    let f = s.foundations.spades.length + s.foundations.hearts.length + s.foundations.diamonds.length + s.foundations.clubs.length;
     if (f === 52) return true;
     // everything free => the game's auto-finish guarantees the win (mirrors canAutoComplete)
     if (s.stock.length || s.waste.length) return false;
     return s.tableau.every(col => col.every(c => c.faceUp));
   };
-  const key = s => s.stock.map(c => c.id).join(',') + ';' + s.waste.map(c => c.id).join(',') + ';' +
-    ['spades', 'hearts', 'diamonds', 'clubs'].map(k => s.foundations[k].length).join(',') + ';' +
-    s.tableau.map(col => col.map(c => (c.faceUp ? 'u' : 'd') + c.id).join(',')).join('|');
+  // Fast loop-based key serialization using pre-mapped card key strings
+  const key = s => {
+    let k = '';
+    const stock = s.stock;
+    for (let i = 0; i < stock.length; i++) k += (i ? ',' : '') + stock[i].id;
+    k += ';';
+    const waste = s.waste;
+    for (let i = 0; i < waste.length; i++) k += (i ? ',' : '') + waste[i].id;
+    k += ';' + s.foundations.spades.length + ',' + s.foundations.hearts.length + ',' + s.foundations.diamonds.length + ',' + s.foundations.clubs.length + ';';
+    const tableau = s.tableau;
+    for (let c = 0; c < 7; c++) {
+      if (c) k += '|';
+      const col = tableau[c];
+      for (let i = 0; i < col.length; i++) {
+        if (i) k += ',';
+        k += col[i].faceUp ? CARD_KEY_U[col[i].id] : CARD_KEY_D[col[i].id];
+      }
+    }
+    return k;
+  };
+
   const seen = new Set(), stack = [cloneState(dealState)];
   while (stack.length) {
     if ((seen.size & 63) === 0 && Date.now() - t0 > timeoutMs) return false;
@@ -399,7 +431,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
       if (t.faceUp && canF(t, cur.foundations)) {
         const n = cloneState(cur), card = n.tableau[c].pop();
         n.foundations[card.suit].push(card);
-        if (n.tableau[c].length && !top(n.tableau[c]).faceUp) top(n.tableau[c]).faceUp = true;
+        flipTop(n.tableau[c]);
         moves.push([10, n]);
       }
     }
@@ -416,7 +448,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
-        if (n.tableau[a].length && !top(n.tableau[a]).faceUp) top(n.tableau[a]).faceUp = true;
+        flipTop(n.tableau[a]);
         moves.push([exposes ? 8 : 4, n]);
       }
     }
@@ -429,8 +461,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     if (cur.stock.length || cur.waste.length) { // draw / recycle
       const n = cloneState(cur);
-      if (!n.stock.length) { while (n.waste.length) { const c = n.waste.pop(); c.faceUp = false; n.stock.push(c); } }
-      else for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) { const c = n.stock.pop(); c.faceUp = true; n.waste.push(c); }
+      if (!n.stock.length) {
+        while (n.waste.length) {
+          const c = n.waste.pop();
+          n.stock.push({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: false });
+        }
+      } else {
+        for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) {
+          const c = n.stock.pop();
+          n.waste.push({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: true });
+        }
+      }
       moves.push([2, n]);
     }
     moves.sort((x, y) => x[0] - y[0]);
