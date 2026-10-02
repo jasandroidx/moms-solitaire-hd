@@ -240,19 +240,33 @@ class GameEngine {
   // R1/R4: tap a card with no selection -> best legal spot (foundation first, then tableau)
   tapCard(loc) {
     const s = this.state;
-    let card, seq;
-    if (loc.zone === 'waste') { card = this.topOf(s.waste); seq = card && card.faceUp ? [card] : []; }
-    else if (loc.zone === 'foundation') return { ok: false };
-    else { seq = this.movableSequence(loc.col); card = seq[0]; }
-    if (!card) return { ok: false };
-    // single cards prefer foundation
-    if (seq.length === 1 && this.canPlaceOnFoundation(card)) return this.moveToFoundation(loc);
+    let card, seq, isTop = false;
+    if (loc.zone === 'waste') {
+      card = this.topOf(s.waste);
+      seq = card && card.faceUp ? [card] : [];
+      isTop = true;
+    } else if (loc.zone === 'foundation') {
+      return { ok: false };
+    } else {
+      const col = s.tableau[loc.col];
+      if (!col || !col.length) return { ok: false };
+      const run = this.movableSequence(loc.col);
+      const runStart = col.length - run.length;
+      const fromIdx = (loc.idx != null && loc.idx >= runStart) ? loc.idx : runStart;
+      seq = col.slice(fromIdx);
+      card = seq[0];
+      isTop = (fromIdx === col.length - 1);
+    }
+    if (!card || !card.faceUp) return { ok: false };
+    // single top cards prefer foundation
+    if (seq.length === 1 && isTop && this.canPlaceOnFoundation(card)) {
+      return this.moveToFoundation(loc);
+    }
     // then tableau
     for (let c = 0; c < s.tableau.length; c++) {
       if (loc.zone === 'tableau' && loc.col === c) continue;
       if (this.canPlaceOnTableau(seq, c)) return { ...this.moveToTableau(loc, c), toCol: c };
     }
-    // last resort: foundation even for sequences of 1 already tried; nothing
     return { ok: false };
   }
 
