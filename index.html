@@ -521,22 +521,22 @@ body[data-scene]::after{
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
   <button class="btn" id="bDaily">Daily Deal</button>
-  <button class="btn" id="bWinnable">Winnable: OFF</button>
+  <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
-  <button class="btn" id="bBig">Big Cards</button>
+  <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
   <button class="btn" id="bHint">Hint</button>
   <button class="btn" id="bStyle">Style</button>
   <button class="btn" id="bScenery">Scenery Change</button>
-  <button class="btn sm" id="bSound">SFX</button>
-  <button class="btn" id="bMusic">Music</button>
+  <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
+  <button class="btn" id="bMusic" aria-pressed="true">Music</button>
   <button class="btn" id="bHelp">Help</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
 <audio id="radioAudio" preload="none"></audio>
-<button id="bRadio" title="Radio on/off" aria-label="Radio on/off"><img src="radio.png" alt="Radio"></button>
+<button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
-<button id="bLens" title="Magnifying glass" aria-label="Magnifying glass">🔍</button>
+<button id="bLens" title="Magnifying glass" aria-label="Magnifying glass" aria-expanded="false">🔍</button>
 <div id="lens" aria-hidden="true"><div class="lview"></div><button class="lens-close" aria-label="Close magnifying glass">✕</button></div>
 <div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
@@ -1970,7 +1970,10 @@ class UI {
     $('#bDeal').onclick=()=>this.newDeal();
     $('#bDaily').onclick=()=>this.startDailyDeal();
     const bW=$('#bWinnable');
-    const paintW=()=>{ bW.textContent='Winnable: '+(this.winnableDeal?'ON':'OFF'); };
+    const paintW=()=>{
+      bW.textContent='Winnable: '+(this.winnableDeal?'ON':'OFF');
+      bW.setAttribute('aria-pressed', this.winnableDeal?'true':'false');
+    };
     paintW();
     bW.onclick=()=>{ Sfx.click(); this.winnableDeal=!this.winnableDeal; store.set('winnableDeal',this.winnableDeal);
       paintW(); this.say(this.winnableDeal?'Winnable deals ON — every hand will be beatable.':'Winnable deals OFF.'); };
@@ -2002,19 +2005,23 @@ class UI {
       else this.theme=next;
       store.set('theme', this.theme); this.applyTheme(); this.view.render(this); Sfx.click(); };
     $('#bSound').onclick=()=>{ const m=Sfx.toggle(); $('#bSound').textContent=m?'SFX off':'SFX';
+      $('#bSound').setAttribute('aria-pressed', m?'false':'true');
       if(m){ Ambience.duck(true); }
       else { const k=Ambience.kind; if(k) Ambience.start(k); Sfx.click(); } };
     $('#bSound').textContent=Sfx.muted?'SFX off':'SFX';
+    $('#bSound').setAttribute('aria-pressed', Sfx.muted?'false':'true');
     // Music button: silences only the music-box tune; SFX, ambience, whale, night-sky all keep playing
     $('#bMusic').onclick=()=>{ this.musicOn=!this.musicOn; store.set('musicOn',this.musicOn);
       $('#bMusic').textContent=this.musicOn?'Music':'Music off';
+      $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
       if(this.musicOn){ Sfx.ensure(); Music.start(); Sfx.click(); } else Music.stop(); };
     $('#bMusic').textContent=this.musicOn?'Music':'Music off';
+    $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
     Radio.init(); Lens.init();
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
-        $('#bMusic').textContent='Music off'; });
+        $('#bMusic').textContent='Music off'; $('#bMusic').setAttribute('aria-pressed', 'false'); });
       else Radio.stop(); };
     // horoscope scroll: bottom-left corner
     $('#bScope').onclick=()=>Scope.open();
@@ -2319,7 +2326,11 @@ class UI {
         if(over>1) b.style.zoom=String(1.28/over);
       } else b.style.zoom='';
     }
-    const btn=$('#bBig'); if(btn) btn.textContent=this.bigCards?'Big Cards ✓':'Big Cards';
+    const btn=$('#bBig');
+    if(btn){
+      btn.textContent=this.bigCards?'Big Cards ✓':'Big Cards';
+      btn.setAttribute('aria-pressed', this.bigCards?'true':'false');
+    }
   }
   applyTheme(){
     const T=TABLES[this.theme]||TABLES.emerald;
@@ -2411,8 +2422,8 @@ const Radio={
     });
   },
   start(cb){ this.audio.src=this.streams[this.idx];
-    this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(cb)cb(); }).catch(()=>{}); },
-  stop(){ this.on=false; if(this.el) this.el.classList.remove('on'); if(this.audio) this.audio.pause(); }
+    this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(this.el) this.el.setAttribute('aria-pressed','true'); if(cb)cb(); }).catch(()=>{}); },
+  stop(){ this.on=false; if(this.el){ this.el.classList.remove('on'); this.el.setAttribute('aria-pressed','false'); } if(this.audio) this.audio.pause(); }
 };
 /* daily horoscope scroll: free Ohmanda API, sign remembered, reading cached per day */
 /* magnifying glass: press-and-hold the badge to pick it up — a 2x loupe follows the
@@ -2477,7 +2488,7 @@ const Lens={
     if(this.on) return;
     this.on=true;
     this.el.classList.add('show');
-    if(this.badge) this.badge.classList.add('on');
+    if(this.badge){ this.badge.classList.add('on'); this.badge.setAttribute('aria-expanded','true'); }
     this.refresh();
     this.move(x!=null?x:innerWidth/2, y!=null?y:innerHeight/2);
   },
@@ -2486,7 +2497,7 @@ const Lens={
     this.on=false;
     this.dragging=false;
     this.el.classList.remove('show');
-    if(this.badge) this.badge.classList.remove('on');
+    if(this.badge){ this.badge.classList.remove('on'); this.badge.setAttribute('aria-expanded','false'); }
   },
   schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
   refresh(){
@@ -2531,9 +2542,15 @@ const Scope={
   today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
   open(){ Sfx.click();
     this.pop=$('#scopePop'); this.pop.classList.add('show');
+    const closeBtn=this.pop.querySelector('.scope-close'); if(closeBtn) closeBtn.focus();
     this.show('virgo'); // mom's sign — no picker
   },
-  close(){ if(this.pop) this.pop.classList.remove('show'); },
+  close(){
+    if(this.pop && this.pop.classList.contains('show')){
+      this.pop.classList.remove('show');
+      const btn=$('#bScope'); if(btn) btn.focus();
+    }
+  },
   show(sign){
     const box=this.pop.querySelector('.scope-body'); box.innerHTML='';
     const cached=store.get('scopeCache',null);
