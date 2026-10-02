@@ -479,12 +479,18 @@ body[data-scene]::after{
   border:3px solid #2a1f14;background:#241a10;padding:0;cursor:pointer;z-index:40;touch-action:none;
   box-shadow:0 4px 14px rgba(0,0,0,.5);font-size:38px;color:#fff;
   display:flex;align-items:center;justify-content:center}
-#lens{position:fixed;width:230px;height:230px;border-radius:50%;z-index:80;display:none;
-  border:7px solid rgba(214,228,238,.95);overflow:hidden;pointer-events:none;background:#1d5c36;
-  box-shadow:0 10px 30px rgba(0,0,0,.55), inset 0 0 24px rgba(255,255,255,.22)}
+#bLens.on{border-color:var(--gold,#ffd75e);box-shadow:0 0 16px var(--gold,#ffd75e);}
+#lens{position:fixed;width:240px;height:240px;border-radius:50%;z-index:85;display:none;
+  border:6px solid rgba(240,245,250,.95);overflow:hidden;pointer-events:auto;background:#1d5c36;
+  box-shadow:0 12px 32px rgba(0,0,0,.6), inset 0 0 24px rgba(255,255,255,.25);cursor:move;touch-action:none;}
 #lens.show{display:block}
-#lens .lview{position:absolute;transform-origin:0 0;pointer-events:none}
+#lens .lview{position:absolute;transform-origin:0 0;pointer-events:none;top:0;left:0;}
 #lens .lview *{pointer-events:none!important}
+#lens .lens-close{position:absolute;top:8px;right:18px;width:28px;height:28px;border-radius:50%;
+  border:none;background:rgba(0,0,0,.6);color:#fff;font-size:16px;font-weight:700;
+  cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 6px rgba(0,0,0,.4);pointer-events:auto;}
+#lens .lens-close:hover{background:rgba(200,40,40,.85);}
 #lens::after{content:'';position:absolute;inset:0;border-radius:50%;pointer-events:none;
   background:radial-gradient(circle at 32% 28%, rgba(255,255,255,.30), rgba(255,255,255,0) 42%)}
 #scopePop{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
@@ -531,7 +537,7 @@ body[data-scene]::after{
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
 <button id="bLens" title="Magnifying glass" aria-label="Magnifying glass">🔍</button>
-<div id="lens" aria-hidden="true"><div class="lview"></div></div>
+<div id="lens" aria-hidden="true"><div class="lview"></div><button class="lens-close" aria-label="Close magnifying glass">✕</button></div>
 <div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
@@ -2021,6 +2027,7 @@ class UI {
       if(e.key==='Escape'){
         if($('#help').classList.contains('show')) $('#help').classList.remove('show');
         if($('#scopePop').classList.contains('show')) Scope.close();
+        if(Lens.on) Lens.close();
         return;
       }
       const k=e.key.toLowerCase();
@@ -2413,44 +2420,95 @@ const Radio={
    (ids stripped, inert, pointer-events none) so the game underneath keeps working;
    a MutationObserver re-snaps it after every board change. */
 const Lens={
-  on:false, S:2, D:230, x:0, y:0, raf:0, bw:0, bh:0, bx:0, by:0, obs:null,
+  on:false, S:2, D:240, x:0, y:0, raf:0, bw:0, bh:0, bx:0, by:0, obs:null, dragging:false,
   init(){
     this.badge=$('#bLens'); this.el=$('#lens'); this.view=this.el.querySelector('.lview');
-    this.badge.addEventListener('pointerdown',e=>{ e.preventDefault(); Sfx.click(); this.open(e.clientX,e.clientY); });
-    this.badge.addEventListener('contextmenu',e=>e.preventDefault());
-    window.addEventListener('pointermove',e=>{ if(this.on) this.move(e.clientX,e.clientY); }, {passive:true});
-    window.addEventListener('pointerup',()=>this.close());
-    window.addEventListener('pointercancel',()=>this.close());
+
+    this.badge.addEventListener('click', e => {
+      e.preventDefault(); Sfx.click();
+      if(this.on) this.close();
+      else this.open(innerWidth/2, innerHeight/2);
+    });
+
+    const closeBtn = this.el.querySelector('.lens-close');
+    if(closeBtn){
+      closeBtn.addEventListener('click', e => {
+        e.stopPropagation(); Sfx.click(); this.close();
+      });
+    }
+
+    this.el.addEventListener('pointerdown', e => {
+      if(e.target.closest('.lens-close')) return;
+      e.preventDefault();
+      this.dragging = true;
+      this.el.setPointerCapture(e.pointerId);
+      this.move(e.clientX, e.clientY);
+    });
+    this.el.addEventListener('pointermove', e => {
+      if(this.dragging) {
+        this.move(e.clientX, e.clientY);
+      }
+    });
+    this.el.addEventListener('pointerup', e => {
+      if(this.dragging) {
+        this.dragging = false;
+        try{ this.el.releasePointerCapture(e.pointerId); }catch(err){}
+      }
+    });
+    this.el.addEventListener('pointercancel', e => {
+      if(this.dragging) {
+        this.dragging = false;
+      }
+    });
+
+    window.addEventListener('pointermove', e => {
+      if(this.on && e.pointerType === 'mouse' && !this.dragging) {
+        this.move(e.clientX, e.clientY);
+      }
+    }, {passive:true});
+
     this.obs=new MutationObserver(()=>{ if(this.on) this.schedule(); });
-    this.obs.observe($('#board'),{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    const target = $('#felt') || $('#board');
+    if(target) {
+      this.obs.observe(target,{childList:true,subtree:true,attributes:true,attributeFilter:['style','class']});
+    }
   },
   open(x,y){
     if(this.on) return;
     this.on=true;
     this.el.classList.add('show');
-    document.body.style.touchAction='none';
-    this.refresh(); this.move(x,y);
+    if(this.badge) this.badge.classList.add('on');
+    this.refresh();
+    this.move(x!=null?x:innerWidth/2, y!=null?y:innerHeight/2);
   },
   close(){
     if(!this.on) return;
     this.on=false;
+    this.dragging=false;
     this.el.classList.remove('show');
-    document.body.style.touchAction='';
+    if(this.badge) this.badge.classList.remove('on');
   },
   schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
   refresh(){
-    // Ordering/connection constraint: do not read layout or clone board if Lens is inactive or board is detached/hidden
     if(!this.on) return;
-    const board=$('#board'); if(!board||!board.isConnected) return;
-    const r=board.getBoundingClientRect();
+    const felt=$('#felt') || $('#board'); if(!felt||!felt.isConnected) return;
+    const r=felt.getBoundingClientRect();
     this.bw=r.width; this.bh=r.height; this.bx=r.left; this.by=r.top;
     this.view.style.width=r.width+'px'; this.view.style.height=r.height+'px';
     this.view.style.transform='scale('+this.S+')';
-    const c=board.cloneNode(true);
+    const c=felt.cloneNode(true);
     c.removeAttribute('id');
     c.querySelectorAll('[id]').forEach(n=>n.removeAttribute('id'));
     c.querySelectorAll('[tabindex]').forEach(n=>n.removeAttribute('tabindex'));
     c.setAttribute('aria-hidden','true'); c.inert=true;
+    c.style.position='absolute';
+    c.style.left='0';
+    c.style.top='0';
+    c.style.width=r.width+'px';
+    c.style.height=r.height+'px';
+    c.style.margin='0';
+    c.style.transform='none';
+    c.style.zoom='1';
     this.view.innerHTML=''; this.view.appendChild(c);
     this.place();
   },
@@ -2462,10 +2520,11 @@ const Lens={
     if(!this.on||!this.bw) return;
     const R=this.D/2;
     this.el.style.left=(this.x-R)+'px'; this.el.style.top=(this.y-R)+'px';
-    const bx=this.x-this.bx, by=this.y-this.by; // board point under the pointer -> lens center
+    const bx=this.x-this.bx, by=this.y-this.by;
     this.view.style.left=(R-bx*this.S)+'px'; this.view.style.top=(R-by*this.S)+'px';
   }
 };
+
 const Scope={
   signs:[['aries','♈','Aries'],['taurus','♉','Taurus'],['gemini','♊','Gemini'],['cancer','♋','Cancer'],['leo','♌','Leo'],['virgo','♍','Virgo'],['libra','♎','Libra'],['scorpio','♏','Scorpio'],['sagittarius','♐','Sagittarius'],['capricorn','♑','Capricorn'],['aquarius','♒','Aquarius'],['pisces','♓','Pisces']],
   pop:null,
