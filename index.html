@@ -240,26 +240,39 @@ header,#board{position:relative;z-index:3;}
 .zzz-bubble{position:absolute;z-index:60;pointer-events:none;font-family:Georgia,serif;font-weight:700;color:#ffd75e;text-shadow:0 2px 4px rgba(0,0,0,0.6);font-size:22px;animation:floatZzz 2.4s ease-out forwards;}
 @keyframes floatZzz{0%{opacity:0;transform:translate(0, 0) scale(0.6);}20%{opacity:1;}100%{opacity:0;transform:translate(18px, -45px) scale(1.3);}}
 #intro{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;
-  background:radial-gradient(ellipse at 50% 18%, rgba(34,70,46,.97), rgba(6,14,10,.985));}
+  background:rgba(8, 14, 10, 0.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto;}
 #intro.hide{display:none;}
-#introcard{max-width:540px;width:100%;text-align:center;background:#fdfbf6;color:#2b3a42;
-  border-radius:24px;padding:28px 30px;box-shadow:0 12px 50px rgba(0,0,0,.55), inset 0 0 0 3px rgba(212,175,55,.4);}
-#introcard h1{margin:0 0 4px;font-size:32px;}
-#introcard .sub{opacity:.72;margin:0 0 12px;font-size:16px;}
-#introcard .lines{text-align:left;font-size:16px;line-height:1.55;}
-#introcard .lines p{margin:8px 0;}
-#introcard .tips{background:#f3ecd9;border-radius:12px;padding:10px 14px;text-align:left;font-size:14px;line-height:1.65;margin:12px 0;}
-#introcard .btn{font-size:18px;padding:12px 38px;margin-top:6px;}
+.intro-bg-fan{position:absolute;pointer-events:none;z-index:1;display:flex;gap:16px;opacity:0.22;transform:translateY(-10px);}
+.fan-card{width:70px;height:100px;background:#fffdf8;border:2px solid #d4af37;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 10px 25px rgba(0,0,0,0.5);}
+.fan-card.c1{transform:rotate(-22deg) translateY(12px);color:#2b2b2b;}
+.fan-card.c2{transform:rotate(-7deg) translateY(0);color:#c0392b;}
+.fan-card.c3{transform:rotate(7deg) translateY(0);color:#c0392b;}
+.fan-card.c4{transform:rotate(22deg) translateY(12px);color:#2b2b2b;}
+#introcard{max-width:540px;width:100%;max-height:88vh;overflow-y:auto;text-align:center;
+  background:linear-gradient(175deg, #fffdf8 0%, #f7f0e1 60%, #eee3cb 100%);color:#2b3a42;
+  border-radius:24px;padding:30px 34px 26px;position:relative;z-index:2;
+  box-shadow:0 30px 80px rgba(0,0,0,.7), inset 0 0 0 1px #ffffff, inset 0 0 0 6px #f7f0e1, inset 0 0 0 8px #c6a15a, inset 0 0 25px rgba(198,161,90,.18);}
+.gift-ribbon{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#8a6218;background:rgba(212,175,55,.15);border:1px solid rgba(198,161,90,.4);border-radius:20px;padding:4px 16px;margin-bottom:10px;}
+#introcard h1{margin:0 0 4px;font-size:clamp(28px,4.5vw,40px);font-family:Georgia, Palatino, serif;font-weight:800;color:#201711;text-shadow:0 1px 0 rgba(255,255,255,.8);}
+#introcard .sub{color:#705537;font-style:italic;margin:0 0 10px;font-size:16px;letter-spacing:.04em;}
+.intro-divider{color:#c6a15a;font-size:12px;margin:8px 0 14px;letter-spacing:6px;opacity:.85;}
+#introcard .lines{text-align:left;font-size:15px;line-height:1.6;color:#362920;}
+#introcard .lines p{margin:8px 0;background:rgba(255,255,255,.65);padding:8px 12px;border-radius:10px;border-left:3px solid #c6a15a;box-shadow:0 2px 6px rgba(0,0,0,.03);}
+#introcard .tips{background:#f2e9d4;border:1px solid rgba(198,161,90,.5);border-radius:14px;padding:12px 16px;text-align:left;font-size:13.5px;line-height:1.65;margin:14px 0;color:#3d3023;box-shadow:inset 0 1px 4px rgba(0,0,0,.05);}
+#introcard .btn{font-size:19px;font-weight:700;padding:12px 44px;margin-top:8px;border-radius:30px;
+  background:linear-gradient(180deg, #ffd966 0%, #e5b338 100%);color:#2d1e08;border:1px solid #b88a22;
+  box-shadow:0 6px 18px rgba(184, 138, 34, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);cursor:pointer;transition:transform .15s ease, box-shadow .15s ease;}
+#introcard .btn:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(184, 138, 34, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.9);}
 /* ---------- the bit: splash + uncooperative play button ---------- */
-#splash{position:fixed;inset:0;z-index:95;display:flex;flex-direction:column;gap:12px;
+#splash{position:fixed;inset:0;z-index:95;display:flex;flex-direction:column;gap:16px;
   align-items:center;justify-content:center;padding:20px;
-  background:radial-gradient(ellipse at 50% 38%, #2e7d4f, #0c1f14);transition:opacity .6s;}
+  background:radial-gradient(circle at 50% 45%, #1b4d32 0%, #0c2618 50%, #040d08 100%);transition:opacity .6s;}
 #splash.hide{opacity:0;pointer-events:none;}
-#splash .big{font-size:clamp(42px,9vw,104px);font-weight:900;color:#ffd75e;text-align:center;line-height:1.08;
-  letter-spacing:2px;text-shadow:0 4px 0 #7e2440, 0 10px 28px rgba(0,0,0,.65);}
+#splash .big{font-size:clamp(38px,8vw,92px);font-family:Georgia, Palatino, serif;font-weight:900;color:#ffe699;text-align:center;line-height:1.08;
+  letter-spacing:2px;text-shadow:0 4px 0 #6a1f33, 0 10px 28px rgba(0,0,0,.7), 0 0 40px rgba(255, 215, 94, 0.35);}
 #splash .big span{display:inline-block;animation:pop .5s cubic-bezier(.2,1.4,.4,1) backwards;}
-@keyframes pop{from{transform:scale(0) rotate(-30deg);opacity:0;}}
-#splash .sub2{font-size:clamp(15px,2.6vw,24px);color:#fff;opacity:.92;animation:pop .5s .95s backwards;}
+@keyframes pop{from{transform:perspective(400px) rotateY(90deg) scale(0.3);opacity:0;}}
+#splash .sub2{font-size:clamp(16px,2.5vw,26px);font-style:italic;color:#f7e1a0;background:rgba(12,38,24,.65);border:1px solid rgba(212,175,55,.5);padding:6px 22px;border-radius:30px;box-shadow:0 8px 20px rgba(0,0,0,.4), inset 0 0 10px rgba(255,215,94,.15);animation:pop .5s .95s backwards;}
 #bPlay.shake{animation:shk .3s;}
 @keyframes shk{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px) rotate(-2deg);}75%{transform:translateX(8px) rotate(2deg);}}
 /* ---------- the cold open: a messy pile that refuses to deal itself ---------- */
@@ -275,7 +288,7 @@ header,#board{position:relative;z-index:3;}
   transform:translate(-50%,-50%) rotate(-2deg) scale(0);transition:transform .25s cubic-bezier(.2,1.5,.4,1);}
 #sassy.show{transform:translate(-50%,-50%) rotate(-2deg) scale(1);}
 #sassy.hide{display:none;}
-@media (prefers-reduced-motion:reduce){ #splash .big span,#splash .sub2{animation:none;} }
+@media (prefers-reduced-motion:reduce){ #splash .big span,#splash .sub2,.fan-card{animation:none !important;transform:none !important;} #intro{backdrop-filter:none;-webkit-backdrop-filter:none;} }
 
 /* ===== the table. felt in a wood rail, real cards on top. ===== */
 body{
@@ -391,31 +404,7 @@ body[data-design="glass"] .slot{
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.38);
   box-shadow:inset 0 2px 8px rgba(0,0,0,.25);
 }
-#splash{
-  background:
-    radial-gradient(ellipse at 50% 40%, rgba(20,14,10,.2), rgba(8,5,3,.78));
-}
-#splash .big{
-  font-family:Georgia, Palatino, serif;font-style:italic;font-weight:700;
-  color:#ffe7a8;letter-spacing:.01em;
-  text-shadow:0 3px 0 #6a3a14, 0 14px 28px rgba(0,0,0,.55);
-}
-#intro{background:rgba(8,5,3,.5);}
-#introcard{
-  background:linear-gradient(180deg,#fffdf8,#f4ead8);
-  border-radius:18px;padding:32px 32px 26px;
-  box-shadow:
-    0 28px 70px rgba(0,0,0,.5),
-    inset 0 0 0 1px #fff,
-    inset 0 0 0 7px #f4ead8,
-    inset 0 0 0 8px #c6a15a;
-}
-#introcard h1{
-  font-family:Georgia, Palatino, serif;
-  font-size:clamp(30px,4vw,44px);letter-spacing:.01em;font-weight:700;
-}
-#introcard .sub{font-style:italic;letter-spacing:.08em;}
-#introcard .tips{background:#f6f0e2;border:1px solid rgba(198,161,90,.45);}
+/* Consolidated intro CSS */
 #wincard{
   background:linear-gradient(180deg,#fffdf8,#f4ead8);
   border-radius:18px;
@@ -540,6 +529,7 @@ body[data-scene]::after{
   <button class="btn sm" id="bSound">SFX</button>
   <button class="btn" id="bMusic">Music</button>
   <button class="btn" id="bHelp">Help</button>
+  <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
 <audio id="radioAudio" preload="none"></audio>
@@ -566,13 +556,23 @@ body[data-scene]::after{
 <div id="hintbar"></div>
 
 <div id="splash"><div class="big" id="splashbig"></div><div class="sub2" id="splashsub"></div></div>
-<div id="intro" role="dialog" aria-modal="true" aria-labelledby="introtitle"><div id="introcard">
-  <h1 id="introtitle">🌸 Mom's Solitaire</h1>
-  <p class="sub" id="introsub"></p>
-  <div class="lines" id="introlines"></div>
-  <div class="tips" id="introtips"></div>
-  <button class="btn" id="bPlay">▶ Play</button>
-</div></div>
+<div id="intro" role="dialog" aria-modal="true" aria-labelledby="introtitle">
+  <div class="intro-bg-fan" aria-hidden="true">
+    <div class="fan-card c1">♠</div>
+    <div class="fan-card c2">♥</div>
+    <div class="fan-card c3">♦</div>
+    <div class="fan-card c4">♣</div>
+  </div>
+  <div id="introcard">
+    <div class="gift-ribbon" aria-hidden="true"><span>🎁</span> FOR MOM <span>🎁</span></div>
+    <h1 id="introtitle">🌸 Mom's Solitaire</h1>
+    <p class="sub" id="introsub"></p>
+    <div class="intro-divider" aria-hidden="true">❖ ♠ ♥ ♦ ♣ ❖</div>
+    <div class="lines" id="introlines"></div>
+    <div class="tips" id="introtips"></div>
+    <button class="btn" id="bPlay">▶ Play</button>
+  </div>
+</div>
 
 <div id="winoverlay" role="dialog" aria-modal="true" aria-labelledby="wintitle"><div id="wincard">
   <h2 id="wintitle">🎉 You won! 🎉</h2>
@@ -2029,6 +2029,27 @@ class UI {
     $('#bScope').onclick=()=>Scope.open();
     $('#scopePop .scope-close').onclick=()=>Scope.close();
     $('#scopePop').addEventListener('click',e=>{ if(e.target.id==='scopePop') Scope.close(); });
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const bInst = $('#bInstall');
+      if (bInst) bInst.style.display = 'inline-block';
+    });
+    const bInst = $('#bInstall');
+    if (bInst) {
+      bInst.onclick = () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          deferredInstallPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+              bInst.style.display = 'none';
+            }
+            deferredInstallPrompt = null;
+          });
+        }
+      };
+    }
     $('#bHelp').onclick=()=>$('#help').classList.add('show');
     $('#bCloseHelp').onclick=()=>$('#help').classList.remove('show');
     document.addEventListener('keydown',e=>{
@@ -2194,6 +2215,24 @@ class UI {
       else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
+    // double tap/click auto-foundation check for Chromebook trackpads & touchscreens
+    const cid = cardEl ? cardEl.dataset.cid : null;
+    if (cid && this._lastTapCid === cid && (now - (this._lastTapTime || 0)) < 350) {
+      if (this.selIsTop(loc)) {
+        const r = this.eng.moveToFoundation(loc);
+        if (r && r.ok) {
+          Sfx.placeCard(true);
+          this.view.selected = null;
+          this.afterMove(cardName(r.card) + ' to foundation.');
+          this.commentate('foundation', r.card);
+          this._lastTapCid = null;
+          return;
+        }
+      }
+    }
+    this._lastTapCid = cid;
+    this._lastTapTime = now;
+
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
     if(loc.zone==='foundation') return;
     // else select the sequence (R1)

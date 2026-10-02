@@ -1,1 +1,32 @@
-{"background_color":"#0b3d24","description":"Klondike solitaire for Mom, from Jason","display":"standalone","icons":[{"sizes":"192x192","src":"icons/icon-192.png","type":"image/png"},{"purpose":"any","sizes":"512x512","src":"icons/icon-512.png","type":"image/png"},{"purpose":"maskable","sizes":"512x512","src":"icons/icon-512.png","type":"image/png"}],"name":"Mom's Solitaire","orientation":"landscape","scope":".","short_name":"Solitaire","start_url":".","theme_color":"#0b3d24"}
+{
+  "name": "Mom's Solitaire",
+  "short_name": "Mom's Solitaire",
+  "description": "Klondike solitaire for Mom, from Jason",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0b3d24",
+  "theme_color": "#0b3d24",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
