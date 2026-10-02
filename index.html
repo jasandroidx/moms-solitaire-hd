@@ -521,22 +521,22 @@ body[data-scene]::after{
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
   <button class="btn" id="bDeal">New Deal</button>
   <button class="btn" id="bDaily">Daily Deal</button>
-  <button class="btn" id="bWinnable">Winnable: OFF</button>
+  <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
   <button class="btn" id="bUndo">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
-  <button class="btn" id="bBig">Big Cards</button>
+  <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
   <button class="btn" id="bHint">Hint</button>
   <button class="btn" id="bStyle">Style</button>
   <button class="btn" id="bScenery">Scenery Change</button>
-  <button class="btn sm" id="bSound">SFX</button>
-  <button class="btn" id="bMusic">Music</button>
+  <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
+  <button class="btn" id="bMusic" aria-pressed="true">Music</button>
   <button class="btn" id="bHelp">Help</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
 <audio id="radioAudio" preload="none"></audio>
-<button id="bRadio" title="Radio on/off" aria-label="Radio on/off"><img src="radio.png" alt="Radio"></button>
+<button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
-<button id="bLens" title="Magnifying glass" aria-label="Magnifying glass">🔍</button>
+<button id="bLens" title="Magnifying glass" aria-label="Magnifying glass" aria-expanded="false">🔍</button>
 <div id="lens" aria-hidden="true"><div class="lview"></div><button class="lens-close" aria-label="Close magnifying glass">✕</button></div>
 <div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
@@ -1970,7 +1970,10 @@ class UI {
     $('#bDeal').onclick=()=>this.newDeal();
     $('#bDaily').onclick=()=>this.startDailyDeal();
     const bW=$('#bWinnable');
-    const paintW=()=>{ bW.textContent='Winnable: '+(this.winnableDeal?'ON':'OFF'); };
+    const paintW=()=>{
+      bW.textContent='Winnable: '+(this.winnableDeal?'ON':'OFF');
+      bW.setAttribute('aria-pressed', this.winnableDeal?'true':'false');
+    };
     paintW();
     bW.onclick=()=>{ Sfx.click(); this.winnableDeal=!this.winnableDeal; store.set('winnableDeal',this.winnableDeal);
       paintW(); this.say(this.winnableDeal?'Winnable deals ON — every hand will be beatable.':'Winnable deals OFF.'); };
@@ -2002,19 +2005,23 @@ class UI {
       else this.theme=next;
       store.set('theme', this.theme); this.applyTheme(); this.view.render(this); Sfx.click(); };
     $('#bSound').onclick=()=>{ const m=Sfx.toggle(); $('#bSound').textContent=m?'SFX off':'SFX';
+      $('#bSound').setAttribute('aria-pressed', m?'false':'true');
       if(m){ Ambience.duck(true); }
       else { const k=Ambience.kind; if(k) Ambience.start(k); Sfx.click(); } };
     $('#bSound').textContent=Sfx.muted?'SFX off':'SFX';
+    $('#bSound').setAttribute('aria-pressed', Sfx.muted?'false':'true');
     // Music button: silences only the music-box tune; SFX, ambience, whale, night-sky all keep playing
     $('#bMusic').onclick=()=>{ this.musicOn=!this.musicOn; store.set('musicOn',this.musicOn);
       $('#bMusic').textContent=this.musicOn?'Music':'Music off';
+      $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
       if(this.musicOn){ Sfx.ensure(); Music.start(); Sfx.click(); } else Music.stop(); };
     $('#bMusic').textContent=this.musicOn?'Music':'Music off';
+    $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
     Radio.init(); Lens.init();
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
-        $('#bMusic').textContent='Music off'; });
+        $('#bMusic').textContent='Music off'; $('#bMusic').setAttribute('aria-pressed', 'false'); });
       else Radio.stop(); };
     // horoscope scroll: bottom-left corner
     $('#bScope').onclick=()=>Scope.open();
@@ -2319,7 +2326,11 @@ class UI {
         if(over>1) b.style.zoom=String(1.28/over);
       } else b.style.zoom='';
     }
-    const btn=$('#bBig'); if(btn) btn.textContent=this.bigCards?'Big Cards ✓':'Big Cards';
+    const btn=$('#bBig');
+    if(btn){
+      btn.textContent=this.bigCards?'Big Cards ✓':'Big Cards';
+      btn.setAttribute('aria-pressed', this.bigCards?'true':'false');
+    }
   }
   applyTheme(){
     const T=TABLES[this.theme]||TABLES.emerald;
@@ -2386,15 +2397,129 @@ const DESIGNS={
 };
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function colTopIdx(col,seq){ return col.length-seq.length; }
-/* generative music-box: plays CUSTOM.music on a loop (starts on Play press) */
+/* Generative Web Audio score: endless, state-reactive, music-box / lullaby palette */
 const Music={
-  timer:null,
-  start(){ const ui=window.ui; if(this.timer||!ui||!ui.musicOn||!CUSTOM.musicOn) return;
-    let i=0;
-    const tick=()=>{ const n=CUSTOM.music[i%CUSTOM.music.length];
-      Sfx.tone(n[0],CUSTOM.musicTempo*Math.min(n[1],1)*0.95,'sine',0.045); i++; };
-    tick(); this.timer=setInterval(tick,CUSTOM.musicTempo*1000); },
-  stop(){ clearInterval(this.timer); this.timer=null; }
+  timer:null, step:0, victoryPlayed:false,
+  getGameState(){
+    const ui=window.ui;
+    if(!ui||!ui.eng) return 'normal';
+    if(ui.won||ui.eng.isWon()) return 'win';
+    if(ui.eng.canAutoComplete()) return 'nearWin';
+    const d=ui.eng.describe();
+    const foundCount=Object.values(d.foundations||{}).reduce((a,b)=>a+b,0);
+    if(foundCount>=28) return 'nearWin';
+    if(!ui.messy&&ui.eng.hint()===null) return 'stuck';
+    return 'normal';
+  },
+  start(){
+    const ui=window.ui;
+    if(this.timer||!ui||!ui.musicOn||!CUSTOM.musicOn) return;
+    if(typeof Radio!=='undefined'&&Radio.on) return;
+    Sfx.ensure();
+    if(!Sfx.ctx) return;
+    this.step=0; this.victoryPlayed=false;
+    this.timer=setInterval(()=>this.tick(), 240);
+    this.tick();
+  },
+  stop(){
+    if(this.timer){ clearInterval(this.timer); this.timer=null; }
+  },
+  playNote(freq, dur, type, vol, delay){
+    if(Sfx.muted||!Sfx.ctx) return;
+    try{
+      const ctx=Sfx.ctx, t=ctx.currentTime+(delay||0);
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type=type||'sine';
+      o.frequency.setValueAtTime(freq,t);
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.linearRampToValueAtTime(vol||0.04, t+0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t+dur+0.05);
+    }catch(e){}
+  },
+  tick(){
+    const ui=window.ui;
+    if(!ui||!ui.musicOn||(typeof Radio!=='undefined'&&Radio.on)||Sfx.muted) return;
+    const state=this.getGameState();
+
+    if(state==='win'){
+      if(!this.victoryPlayed){
+        this.victoryPlayed=true;
+        [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((f,idx)=>{
+          this.playNote(f, 0.45, 'sine', 0.05, idx*0.12);
+        });
+      }
+      return;
+    }
+    this.victoryPlayed=false;
+
+    const step=this.step%16;
+    const bar=Math.floor(this.step/8)%4;
+
+    let roots, chords, scale;
+    if(state==='stuck'){
+      roots=[220.00, 146.83, 164.81, 174.61];
+      chords=[
+        [220.00, 261.63, 329.63, 392.00],
+        [146.83, 220.00, 261.63, 349.23],
+        [164.81, 246.94, 329.63, 392.00],
+        [174.61, 220.00, 261.63, 329.63]
+      ];
+      scale=[220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00];
+    } else if(state==='nearWin'){
+      roots=[130.81, 164.81, 174.61, 196.00];
+      chords=[
+        [261.63, 329.63, 392.00, 523.25],
+        [329.63, 392.00, 493.88, 659.25],
+        [349.23, 440.00, 523.25, 698.46],
+        [392.00, 493.88, 587.33, 783.99]
+      ];
+      scale=[261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00];
+    } else {
+      roots=[130.81, 220.00, 174.61, 196.00];
+      chords=[
+        [261.63, 329.63, 392.00, 493.88],
+        [220.00, 261.63, 329.63, 392.00],
+        [174.61, 261.63, 329.63, 349.23],
+        [196.00, 246.94, 293.66, 392.00]
+      ];
+      scale=[261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 659.25, 783.99];
+    }
+
+    const currentChord=chords[bar];
+    const rootNote=roots[bar];
+
+    if(step===0||step===8){
+      const bassVol=state==='nearWin'?0.035:0.025;
+      this.playNote(rootNote, 0.7, 'triangle', bassVol);
+    }
+
+    let playMelody=false;
+    if(state==='stuck'){
+      playMelody=(step%4===0)||(Math.random()<0.2);
+    } else if(state==='nearWin'){
+      playMelody=(step%2===0)||(Math.random()<0.7);
+    } else {
+      playMelody=(step%2===0)||(Math.random()<0.35);
+    }
+
+    if(playMelody){
+      let freq=(Math.random()<0.7)
+        ? currentChord[Math.floor(Math.random()*currentChord.length)]
+        : scale[Math.floor(Math.random()*scale.length)];
+
+      if(state==='nearWin'&&Math.random()<0.3) freq*=2;
+
+      const dur=state==='stuck'?0.6:(state==='nearWin'?0.35:0.45);
+      const vol=state==='nearWin'?0.045:(state==='stuck'?0.03:0.038);
+      const waveType=(state==='nearWin')?'sine':(Math.random()<0.2?'triangle':'sine');
+
+      this.playNote(freq, dur, waveType, vol);
+    }
+
+    this.step++;
+  }
 };
 /* corner radio: free internet radio. classic-rock lean for mom:
    Radio Paradise rock mix first, SomaFM 70s as fallback. plain on/off. */
@@ -2411,8 +2536,8 @@ const Radio={
     });
   },
   start(cb){ this.audio.src=this.streams[this.idx];
-    this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(cb)cb(); }).catch(()=>{}); },
-  stop(){ this.on=false; if(this.el) this.el.classList.remove('on'); if(this.audio) this.audio.pause(); }
+    this.audio.play().then(()=>{ this.on=true; this.el.classList.add('on'); if(this.el) this.el.setAttribute('aria-pressed','true'); if(cb)cb(); }).catch(()=>{}); },
+  stop(){ this.on=false; if(this.el){ this.el.classList.remove('on'); this.el.setAttribute('aria-pressed','false'); } if(this.audio) this.audio.pause(); }
 };
 /* daily horoscope scroll: free Ohmanda API, sign remembered, reading cached per day */
 /* magnifying glass: press-and-hold the badge to pick it up — a 2x loupe follows the
@@ -2477,7 +2602,7 @@ const Lens={
     if(this.on) return;
     this.on=true;
     this.el.classList.add('show');
-    if(this.badge) this.badge.classList.add('on');
+    if(this.badge){ this.badge.classList.add('on'); this.badge.setAttribute('aria-expanded','true'); }
     this.refresh();
     this.move(x!=null?x:innerWidth/2, y!=null?y:innerHeight/2);
   },
@@ -2486,7 +2611,7 @@ const Lens={
     this.on=false;
     this.dragging=false;
     this.el.classList.remove('show');
-    if(this.badge) this.badge.classList.remove('on');
+    if(this.badge){ this.badge.classList.remove('on'); this.badge.setAttribute('aria-expanded','false'); }
   },
   schedule(){ cancelAnimationFrame(this.raf); this.raf=requestAnimationFrame(()=>this.refresh()); },
   refresh(){
@@ -2531,9 +2656,15 @@ const Scope={
   today(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); },
   open(){ Sfx.click();
     this.pop=$('#scopePop'); this.pop.classList.add('show');
+    const closeBtn=this.pop.querySelector('.scope-close'); if(closeBtn) closeBtn.focus();
     this.show('virgo'); // mom's sign — no picker
   },
-  close(){ if(this.pop) this.pop.classList.remove('show'); },
+  close(){
+    if(this.pop && this.pop.classList.contains('show')){
+      this.pop.classList.remove('show');
+      const btn=$('#bScope'); if(btn) btn.focus();
+    }
+  },
   show(sign){
     const box=this.pop.querySelector('.scope-body'); box.innerHTML='';
     const cached=store.get('scopeCache',null);
