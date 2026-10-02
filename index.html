@@ -619,9 +619,251 @@ const Sfx = {
     g.gain.setValueAtTime(vol||0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+dur);
     o.connect(g); g.connect(this.ctx.destination); o.start(t); o.stop(t+dur+0.02);
   },
-  click(){ this.tone(660,.07,'triangle',.08); },
-  flip(){ this.tone(440,.06,'triangle',.06); this.tone(660,.06,'triangle',.05,.05); },
-  bad(){ this.fart(); },
+  click(){
+    const base = 600 + Math.random()*120;
+    this.tone(base, .06, 'triangle', .08);
+  },
+  /* Card Click / Selection: an array of fun silly sound generators */
+  clickCard(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const sounds = [
+      // 1. Bubble Pop
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(300, t);
+        o.frequency.exponentialRampToValueAtTime(850, t+0.05);
+        g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.06);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.07);
+      },
+      // 2. Springy Boing
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='triangle'; o.frequency.setValueAtTime(650, t);
+        o.frequency.exponentialRampToValueAtTime(320, t+0.08);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.09);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.1);
+      },
+      // 3. Wood Knock
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='square'; o.frequency.setValueAtTime(240, t);
+        o.frequency.exponentialRampToValueAtTime(110, t+0.04);
+        g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.045);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.05);
+      },
+      // 4. Pluck / Kalimba
+      ()=>{
+        [523, 784].forEach(f=>{
+          const o=ctx.createOscillator(), g=ctx.createGain();
+          o.type='sine'; o.frequency.setValueAtTime(f, t);
+          g.gain.setValueAtTime(0.08, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.08);
+          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.09);
+        });
+      },
+      // 5. Squeak / Chirp
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(1100, t);
+        o.frequency.exponentialRampToValueAtTime(1600, t+0.04);
+        g.gain.setValueAtTime(0.07, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.045);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.05);
+      },
+      // 6. Bloop
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(720, t);
+        o.frequency.exponentialRampToValueAtTime(360, t+0.06);
+        g.gain.setValueAtTime(0.11, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.065);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.07);
+      },
+      // 7. Double Pip
+      ()=>{
+        [880, 1174].forEach((f, i)=>{
+          const o=ctx.createOscillator(), g=ctx.createGain();
+          o.type='triangle'; o.frequency.setValueAtTime(f, t+i*0.03);
+          g.gain.setValueAtTime(0.08, t+i*0.03); g.gain.exponentialRampToValueAtTime(0.001, t+i*0.03+0.03);
+          o.connect(g); g.connect(ctx.destination); o.start(t+i*0.03); o.stop(t+i*0.03+0.035);
+        });
+      },
+      // 8. Rubber Plunk
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sawtooth'; o.frequency.setValueAtTime(220, t);
+        o.frequency.exponentialRampToValueAtTime(100, t+0.05);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.055);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.06);
+      },
+      // 9. Crisp Tap
+      ()=>{
+        this.tone(550 + Math.random()*200, .05, 'triangle', .08);
+      }
+    ];
+    sounds[Math.floor(Math.random() * sounds.length)]();
+    Vox.maybe('sillyClick', 0.03);
+  },
+  /* Card Placement (Tableau / Foundation): array of fun silly placement sounds */
+  placeCard(isFoundation){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const sounds = [
+      // 1. Slap & Pop
+      ()=>{
+        const o1=ctx.createOscillator(), g1=ctx.createGain();
+        o1.type='sine'; o1.frequency.setValueAtTime(140, t);
+        g1.gain.setValueAtTime(0.15, t); g1.gain.exponentialRampToValueAtTime(0.001, t+0.04);
+        o1.connect(g1); g1.connect(ctx.destination); o1.start(t); o1.stop(t+0.05);
+
+        const o2=ctx.createOscillator(), g2=ctx.createGain();
+        o2.type='triangle'; o2.frequency.setValueAtTime(750, t+0.02);
+        g2.gain.setValueAtTime(0.09, t+0.02); g2.gain.exponentialRampToValueAtTime(0.001, t+0.06);
+        o2.connect(g2); g2.connect(ctx.destination); o2.start(t+0.02); o2.stop(t+0.07);
+      },
+      // 2. Step Note
+      ()=>{
+        const base = isFoundation ? 600 : 440;
+        this.tone(base, .06, 'triangle', .08);
+        this.tone(base * 1.25, .06, 'triangle', .07, .04);
+      },
+      // 3. Cork Pop
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(680, t);
+        o.frequency.exponentialRampToValueAtTime(260, t+0.06);
+        g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.065);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.07);
+      },
+      // 4. Double Bounce
+      ()=>{
+        [380, 520, 320].forEach((f, i)=>{
+          this.tone(f, .04, 'triangle', .07, i*0.03);
+        });
+      },
+      // 5. Dual Chime
+      ()=>{
+        this.tone(659, .08, 'sine', .08);
+        this.tone(880, .08, 'sine', .08, .03);
+      },
+      // 6. Quack Bloop
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sawtooth'; o.frequency.setValueAtTime(280, t);
+        o.frequency.exponentialRampToValueAtTime(420, t+0.03);
+        o.frequency.exponentialRampToValueAtTime(220, t+0.07);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.075);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.08);
+      },
+      // 7. Sparkle Tap
+      ()=>{
+        [880, 1174, 1318].forEach((f, i)=>{
+          this.tone(f, .03, 'sine', .06, i*0.025);
+        });
+      },
+      // 8. Card Snap
+      ()=>{
+        this.tone(480, .05, 'triangle', .08);
+        this.tone(720, .05, 'square', .04, .02);
+      }
+    ];
+    sounds[Math.floor(Math.random() * sounds.length)]();
+    if(isFoundation){
+      Vox.maybe('sillyPlace', 0.25);
+    } else {
+      Vox.maybe('sillyPlace', 0.08);
+    }
+  },
+  /* Deck / Stock Click & Draw: array of fun silly deck sounds */
+  clickDeck(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const ctx = this.ctx, t = ctx.currentTime;
+    const sounds = [
+      // 1. Riffle Tick
+      ()=>{
+        const count = 3 + Math.floor(Math.random()*3);
+        for(let i=0; i<count; i++){
+          this.tone(300 + Math.random()*500, .03, 'square', .04, i*0.03);
+        }
+      },
+      // 2. Slide Whistle Up
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(320, t);
+        o.frequency.exponentialRampToValueAtTime(880, t+0.1);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.11);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.12);
+      },
+      // 3. Double Bloop
+      ()=>{
+        this.tone(420, .05, 'sine', .09);
+        this.tone(680, .05, 'sine', .09, .04);
+      },
+      // 4. Spring Unfurl
+      ()=>{
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='triangle'; o.frequency.setValueAtTime(500, t);
+        o.frequency.exponentialRampToValueAtTime(250, t+0.05);
+        o.frequency.exponentialRampToValueAtTime(600, t+0.1);
+        g.gain.setValueAtTime(0.09, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.11);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.12);
+      },
+      // 5. Whoosh Snap
+      ()=>{
+        this.tone(200, .06, 'sawtooth', .05);
+        this.tone(800, .04, 'triangle', .08, .03);
+      }
+    ];
+    sounds[Math.floor(Math.random() * sounds.length)]();
+    Vox.maybe('dealWhoosh', 0.18);
+  },
+  flip(){ this.placeCard(false); },
+  bad(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const sounds = [
+      ()=> this.fart(),
+      // Sad Boing Down
+      ()=>{
+        const ctx=this.ctx, t=ctx.currentTime;
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sawtooth'; o.frequency.setValueAtTime(420, t);
+        o.frequency.exponentialRampToValueAtTime(80, t+0.25);
+        g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.26);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.27);
+      },
+      // Wobble Buzz
+      ()=>{
+        const ctx=this.ctx, t=ctx.currentTime;
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='square'; o.frequency.setValueAtTime(75, t);
+        const lfo=ctx.createOscillator(); lfo.frequency.value=25;
+        const lg=ctx.createGain(); lg.gain.value=20;
+        lfo.connect(lg); lg.connect(o.frequency);
+        g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.2);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t); lfo.start(t); o.stop(t+0.21); lfo.stop(t+0.21);
+      },
+      // Clown Honk
+      ()=>{
+        const ctx=this.ctx, t=ctx.currentTime;
+        [190, 230].forEach(f=>{
+          const o=ctx.createOscillator(), g=ctx.createGain();
+          o.type='sawtooth'; o.frequency.setValueAtTime(f, t);
+          g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.18);
+          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.19);
+        });
+      },
+      // Slide Down Whistle
+      ()=>{
+        const ctx=this.ctx, t=ctx.currentTime;
+        const o=ctx.createOscillator(), g=ctx.createGain();
+        o.type='sine'; o.frequency.setValueAtTime(850, t);
+        o.frequency.exponentialRampToValueAtTime(180, t+0.22);
+        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.23);
+        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.24);
+      }
+    ];
+    sounds[Math.floor(Math.random() * sounds.length)]();
+    Vox.maybe('illegal', 0.15);
+  },
   /* illegal-move raspberry: 3 randomized synth farts */
   fart(){
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
@@ -710,7 +952,7 @@ const Ambience = {
 };
 /* Voice clips: mp3 files in sfx/, mapped in CUSTOM.vox. Lazy-loaded, unlocked on first tap. */
 const Vox = {
-  cache:{}, unlocked:false,
+  cache:{}, unlocked:false, _busyUntil:0,
   unlock(){ if(this.unlocked) return; this.unlocked=true;
     const v=CUSTOM.vox||{};
     for(const k of Object.keys(v)){ const f=v[k]; (Array.isArray(f)?f:[f]).forEach(x=>{ if(typeof x==='string') this.load(x); }); } },
@@ -719,11 +961,24 @@ const Vox = {
   play(key, idx, vol){
     if(Sfx.muted) return; this.unlock();
     let f=(CUSTOM.vox||{})[key]; if(!f) return;
-    if(Array.isArray(f)) f=f[Math.min(idx||0,f.length-1)];
+    if(Array.isArray(f)) f=(idx!=null && idx<f.length)?f[idx]:f[Math.floor(Math.random()*f.length)];
     if(!f) return;
     this.load(f);
     const a=this.cache[f]; if(!a) return;
-    try{ a.volume=(vol==null?1:vol); a.currentTime=0; const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+    try{
+      a.volume=(vol==null?1:vol); a.currentTime=0;
+      const p=a.play(); if(p&&p.catch) p.catch(()=>{});
+      if(a.duration && a.duration > 0.5) {
+        this._busyUntil = Date.now() + (a.duration * 1000);
+      }
+    }catch(e){}
+  },
+  maybe(key, chance, vol){
+    if(Sfx.muted) return;
+    if(Date.now() < this._busyUntil) return;
+    if(Math.random() < (chance||0.1)){
+      this.play(key, null, vol);
+    }
   }
 };
 /* Ocean whale and night-sky shooting star. The still stays up; the clip plays over it, then goes away. */
@@ -987,6 +1242,11 @@ const CUSTOM = {
     whale: 'whale.mp3',                  // 🐋 aquarium table: win celebration + rare idle call (freesound.org/people/muri_kuri/sounds/684188 — CC license, recheck before public release)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
+    cardPlace: ['card-place.mp3', 'boing.mp3'],
+    dealWhoosh: ['deal-whoosh.mp3', 'goofy-spring-bounces.mp3'],
+    sillyClick: ['boing.mp3', 'clown-horn.mp3', 'wow-m.mp3'],
+    sillyPlace: ['card-place.mp3', 'crowd-ooooh.mp3', 'crowd-aaaah.mp3', 'audience-cheer-clap.mp3'],
+    illegal: ['clown-horn.mp3', 'boing.mp3'],
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
@@ -1694,7 +1954,7 @@ class UI {
     board.addEventListener('pointermove',e=>this.onMove(e));
     board.addEventListener('pointerup',e=>this.onUp(e));
     board.addEventListener('pointercancel',e=>this.onUp(e,true));
-    this.view.stockEl.addEventListener('click',()=>{ if(this.messy) return; if(!this.drag){ Sfx.flip();
+    this.view.stockEl.addEventListener('click',()=>{ if(this.messy) return; if(!this.drag){ Sfx.clickDeck();
       const r=this.eng.draw(); this.afterMove(r.recycled?'Stock recycled.':'Drew card'+(this.drawCount>1?'s':'')+'.'); this.commentate('stock'); }});
     this.view.stockEl.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){e.preventDefault();this.view.stockEl.click();} });
     // pile clicks (foundations / empty columns) for tap-to-place
@@ -1783,6 +2043,7 @@ class UI {
       const seq=this.eng.movableSequence(loc.col);
       if(!seq.length||loc.idx<colTopIdx(this.eng.state.tableau[loc.col],seq)) return;
     }
+    Sfx.clickCard();
     this.drag={x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,el:card,loc,active:false,ghosts:null};
   }
   onMove(e){
@@ -1883,14 +2144,14 @@ class UI {
       const z=pile.dataset.zone;
       if(z==='foundation'&&d.seq.length===1&&this.selIsTop(d.loc)){
         const r=this.eng.moveToFoundation(d.loc);
-        if(r.ok){ Sfx.flip(); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); done=true; }
+        if(r.ok){ Sfx.placeCard(true); this.afterMove(cardName(r.card)+' to foundation.'); this.commentate('foundation', r.card); done=true; }
         else illegal=true;
       } else if(z==='tableau'){
         const toCol=+pile.dataset.col;
         if(d.loc.zone==='tableau'&&d.loc.col===toCol){ /* dropped back home: silent cancel */ }
         else {
           const r=this.eng.moveToTableau(d.loc,toCol);
-          if(r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
+          if(r.ok){ Sfx.placeCard(false); this.view.selected=null; this.afterMove('Moved.'); this.commentate('tableau', r.cards[0]); done=true; }
           else illegal=true;
         }
       }
@@ -1912,7 +2173,7 @@ class UI {
       if(loc.zone==='foundation') r=this.selIsTop(sel)?this.eng.moveToFoundation(sel):{ok:false};
       else if(loc.zone==='tableau') r=this.eng.moveToTableau(sel,loc.col);
       else r={ok:false};
-      if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
+      if(r&&r.ok){ Sfx.placeCard(loc.zone==='foundation'); this.view.selected=null; this.afterMove('Moved.');
         if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
       else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
@@ -1922,14 +2183,14 @@ class UI {
     // else select the sequence (R1)
     if(loc.zone==='waste'){ this.view.selected={zone:'waste'}; }
     else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx}; }
-    this.view.render(this); Sfx.click();
+    this.view.render(this); Sfx.clickCard();
   }
   onPileTap(pile){
     const sel=this.view.selected; if(!sel) return;
     const z=pile.dataset.zone; let r;
     if(z==='foundation') r=this.selIsTop(sel)?this.eng.moveToFoundation(sel):{ok:false};
     else r=this.eng.moveToTableau(sel,+pile.dataset.col);
-    if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
+    if(r&&r.ok){ Sfx.placeCard(z==='foundation'); this.view.selected=null; this.afterMove('Moved.');
       if(z==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
     else { Sfx.bad(); this.say('That move is not legal.'); }
   }
@@ -1943,9 +2204,9 @@ class UI {
     const step=()=>{
       if(this.won) return;
       const r=this.eng.autoStep();
-      if(r.ok){ this.afterMove(); setTimeout(step,170); }
+      if(r.ok){ Sfx.placeCard(true); this.afterMove(); setTimeout(step,170); }
     };
-    Sfx.flip(); step();
+    Sfx.placeCard(true); step();
   }
 
   /* bundled photo backs: one random photo per card, reshuffled every game.
