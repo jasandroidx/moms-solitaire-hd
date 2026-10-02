@@ -444,18 +444,19 @@ body[data-design="glass"] .slot{
   font-size:12px;font-weight:700;padding:1px 6px;border-radius:8px;
 }
 /* scenes take the whole room. The wood rail and felt step aside so the sky or the water shows through. */
-body[data-scene] #room{background:transparent;}
-body[data-scene] #rail{
+body[data-scene="ocean"] #room, body[data-scene="night"] #room{background:transparent;}
+body[data-scene="ocean"] #rail, body[data-scene="night"] #rail{
   background:transparent;
   box-shadow:none;
 }
-body[data-scene] #felt{
+body[data-scene="ocean"] #felt, body[data-scene="night"] #felt{
   background:transparent;
   box-shadow:none;
 }
-body[data-scene] #felt::before{border-color:transparent;}
+body[data-scene="ocean"] #felt::before, body[data-scene="night"] #felt::before{border-color:transparent;}
 body[data-scene="ocean"]{background:#06283f;}
 body[data-scene="night"]{background:#07091a;}
+body[data-scene="meadow"]{background:#1d4229;}
 body[data-scene]::after{
   background:radial-gradient(ellipse at 50% 36%, transparent 46%, rgba(0,0,0,.38) 100%);
 }
@@ -467,6 +468,7 @@ body[data-scene]::after{
 .scenebtn.table{background:linear-gradient(180deg,#2f8a58,#1c5c38);}
 .scenebtn.ocean{background:linear-gradient(180deg,#1f86b4,#0a3e60);}
 .scenebtn.night{background:linear-gradient(180deg,#24305c,#0c1024);}
+.scenebtn.meadow{background:linear-gradient(180deg,#3b7a4a,#1d4229);}
 /* corner radio: little old radio with an antenna, bottom-right */
 #bRadio{position:fixed;right:14px;bottom:14px;width:76px;height:76px;border-radius:50%;
   border:3px solid #2a1f14;background:#241a10;padding:0;cursor:pointer;z-index:40;overflow:hidden;
@@ -2007,7 +2009,7 @@ class UI {
       this.lastFelt=this.theme; store.set('theme',this.theme); store.set('lastFelt',this.lastFelt);
       this.applyTheme(); this.view.render(this); Sfx.click(); };
     // Scenery Change: rotate table -> ocean -> night -> table
-    $('#bScenery').onclick=()=>{ const order=['table','ocean','night'];
+    $('#bScenery').onclick=()=>{ const order=['table','ocean','night','meadow'];
       const cur=(TABLES[this.theme]||{}).scene||'table';
       const next=order[(order.indexOf(cur)+1)%order.length];
       this.backPinned=false; store.set('backPinned', false);
@@ -2418,8 +2420,23 @@ class UI {
     const vid=$('#sceneClip');
     if(vid){ vid.pause(); vid.classList.remove('show'); }
     if(still){
-      if(T.scene) still.src='scenes/'+T.scene+'.jpg';
-      else still.removeAttribute('src');
+      still.onerror = null;
+      if(T.scene === "meadow"){
+        const now = new Date();
+        const start = new Date(now.getFullYear(), 0, 0);
+        const diff = now - start;
+        const oneDay = 1000 * 60 * 60 * 24;
+        const dayOfYear = Math.floor(diff / oneDay);
+        still.style.display = "";
+        still.onerror = () => { still.style.display = "none"; };
+        still.src = `https://loremflickr.com/1920/1080/nature?lock=${dayOfYear}`;
+      } else if(T.scene){
+        still.style.display = "";
+        still.src = "scenes/" + T.scene + ".jpg";
+      } else {
+        still.style.display = "";
+        still.removeAttribute("src");
+      }
     }
     if(typeof Distant!=='undefined') Distant.arm(true);
     if(this.fxReskin) this.fxReskin();
@@ -2437,6 +2454,7 @@ const SPECK='url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'
 const PLANKS='repeating-linear-gradient(90deg, transparent 0 118px, rgba(0,0,0,.28) 118px 122px)';
 const RAYS='repeating-linear-gradient(115deg, transparent 0 60px, rgba(150,215,255,.07) 60px 130px)'; /* aquarium light shafts */
 const TABLES={
+  meadow:{name:"Meadow",scene:"meadow",bg:"radial-gradient(120% 100% at 50% 0%, #2e7d4f, #1d5c36)",back1:"#b03a5b",back2:"#7e2440",accent:"#e8b64c"},
   ocean:{name:'Blue ocean',scene:'ocean',bg:'linear-gradient(180deg,#1f86b4,#0a3e60)',back1:'#0b4e72',back2:'#062636',accent:'#d5f2ff'},
   night:{name:'Night sky',scene:'night',bg:'linear-gradient(180deg,#24305c,#07091a)',back1:'#12162e',back2:'#070914',accent:'#f3e2a4'},
   emerald:{name:'Emerald felt',bg:'radial-gradient(120% 100% at 50% 0%, #2e7d4f, #1d5c36)',back1:'#b03a5b',back2:'#7e2440',accent:'#e8b64c'},
