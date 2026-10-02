@@ -445,7 +445,39 @@ body[data-scene="ocean"] #felt, body[data-scene="night"] #felt{
 body[data-scene="ocean"] #felt::before, body[data-scene="night"] #felt::before{border-color:transparent;}
 body[data-scene="ocean"]{background:#06283f;}
 body[data-scene="night"]{background:#07091a;}
-body[data-scene="meadow"]{background:#1d4229;}
+body[data-scene="meadow"]{background:
+  radial-gradient(ellipse 70% 42% at 50% -6%, rgba(255,246,208,.34), rgba(255,246,208,0) 62%),
+  radial-gradient(ellipse 130% 70% at 12% 112%, rgba(64,145,90,.55), rgba(64,145,90,0) 58%),
+  radial-gradient(ellipse 130% 70% at 88% 115%, rgba(46,125,79,.6), rgba(46,125,79,0) 60%),
+  linear-gradient(180deg,#3f7f52 0%, #2c6b41 34%, #1d4a2c 68%, #122a1c 100%);}
+/* meadow air: drifting pollen motes + an occasional butterfly. pure CSS/JS, no assets. */
+#pollen{display:none;position:fixed;inset:0;z-index:4;pointer-events:none;overflow:hidden;}
+body[data-scene="meadow"] #pollen{display:block;}
+#pollen span{position:absolute;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,250,220,.95),rgba(255,250,220,0) 70%);
+  animation:pdrift linear infinite;}
+@keyframes pdrift{
+  0%{transform:translate(0,0);}
+  25%{transform:translate(4vw,-7vh);}
+  50%{transform:translate(-3vw,-13vh);}
+  75%{transform:translate(3vw,-19vh);}
+  100%{transform:translate(-2vw,-27vh);}}
+#butterfly{position:fixed;left:-70px;top:32%;font-size:34px;z-index:4;pointer-events:none;opacity:0;
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.35));}
+body[data-scene="meadow"] #butterfly.fly{animation:bfly 15s linear forwards;}
+@keyframes bfly{
+  0%{opacity:0;transform:translate(0,0) rotate(-10deg) scaleY(1);}
+  6%{opacity:1;}
+  20%{transform:translate(22vw,-64px) rotate(8deg) scaleY(.82);}
+  40%{transform:translate(45vw,38px) rotate(-8deg) scaleY(1);}
+  60%{transform:translate(68vw,-48px) rotate(10deg) scaleY(.82);}
+  80%{transform:translate(88vw,26px) rotate(-6deg) scaleY(1);}
+  93%{opacity:1;}
+  100%{opacity:0;transform:translate(112vw,6px) rotate(0) scaleY(1);}}
+@media (prefers-reduced-motion:reduce){
+  #pollen{display:none!important;}
+  #butterfly{display:none!important;}
+}
 body[data-scene]::after{
   background:radial-gradient(ellipse at 50% 36%, transparent 46%, rgba(0,0,0,.38) 100%);
 }
@@ -629,7 +661,7 @@ body.deep-sleep #felt {
 <body>
 <div id="announcer" aria-live="polite"></div>
 <canvas id="fx"></canvas>
-<div id="scene" aria-hidden="true"><img id="sceneStill" alt=""><video id="sceneClip" muted playsinline preload="none"></video></div>
+<div id="scene" aria-hidden="true"><img id="sceneStill" alt=""><video id="sceneClip" muted playsinline preload="none"></video><div id="pollen"></div><div id="butterfly">🦋</div></div>
 <div id="rainfx"></div>
 
 <div id="room"><div id="rail"><div id="felt">
@@ -1187,17 +1219,35 @@ const Vox = {
     }
   }
 };
-/* Ocean whale and night-sky shooting star. The still stays up; the clip plays over it, then goes away. */
+/* Ocean whale, night-sky shooting star, meadow butterfly. The still stays up; the clip
+   plays over it, then goes away. Meadow's pollen drifts on pure CSS; the butterfly
+   is a periodic visitor like the whale. */
 const Distant = {
-  timer:null, spout:0,
+  timer:null, spout:0, pollenSeeded:false,
+  seedPollen(){
+    if(this.pollenSeeded) return; this.pollenSeeded=true;
+    const p=$('#pollen'); if(!p) return;
+    for(let i=0;i<14;i++){
+      const s=document.createElement('span');
+      const sz=(3+Math.random()*4).toFixed(1);
+      s.style.width=s.style.height=sz+'px';
+      s.style.left=(Math.random()*100)+'vw';
+      s.style.top=(18+Math.random()*72)+'vh';
+      s.style.animationDuration=(15+Math.random()*18).toFixed(1)+'s';
+      s.style.animationDelay=(-Math.random()*22).toFixed(1)+'s';
+      p.appendChild(s);
+    }
+  },
   arm(first){
     clearTimeout(this.timer);
     const ui=window.ui; if(!ui) return;
     const scene=document.body.dataset.scene;
-    if(scene!=='ocean' && scene!=='night' && ui.theme!=='aquarium') return;
+    if(scene!=='ocean' && scene!=='night' && scene!=='meadow' && ui.theme!=='aquarium') return;
     if(matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if(scene==='meadow') this.seedPollen();
     let wait;
     if(scene==='night') wait=first?(24000+Math.random()*16000):(150000+Math.random()*90000);
+    else if(scene==='meadow') wait=first?(20000+Math.random()*15000):(120000+Math.random()*90000);
     else wait=first?(18000+Math.random()*14000):(85000+Math.random()*45000);
     this.timer=setTimeout(()=>this.call(), wait);
   },
@@ -1208,6 +1258,13 @@ const Distant = {
     const p=vid.play();
     if(p&&p.catch) p.catch(()=>{ vid.classList.remove('show'); this.arm(false); });
   },
+  flyby(){
+    const b=$('#butterfly'); if(!b){ this.arm(false); return; }
+    b.classList.remove('fly'); void b.offsetWidth;
+    const done=()=>{ b.classList.remove('fly'); b.removeEventListener('animationend',done); this.arm(false); };
+    b.addEventListener('animationend',done);
+    b.classList.add('fly');
+  },
   call(){
     const ui=window.ui; if(!ui) return;
     const scene=document.body.dataset.scene;
@@ -1216,6 +1273,8 @@ const Distant = {
       this.show('scenes/whale.mp4');
     } else if(scene==='night'){
       this.show('scenes/star.mp4');
+    } else if(scene==='meadow'){
+      this.flyby();
     } else if(ui.theme==='aquarium' && !Sfx.muted && CUSTOM.ambience){
       Vox.play('whale', 0, 0.38);
       this.arm(false);
@@ -3109,14 +3168,11 @@ class UI {
     if(still){
       still.onerror = null;
       if(T.scene === "meadow"){
-        const now = new Date();
-        const start = new Date(now.getFullYear(), 0, 0);
-        const diff = now - start;
-        const oneDay = 1000 * 60 * 60 * 24;
-        const dayOfYear = Math.floor(diff / oneDay);
-        still.style.display = "";
-        still.onerror = () => { still.style.display = "none"; };
-        still.src = `https://loremflickr.com/1920/1080/nature?lock=${dayOfYear}`;
+        // static meadow: the daily-photo service proved unreliable, so no more
+        // network photo here — the scene is a pure CSS backdrop with live
+        // pollen drift + periodic butterfly visitor (see Distant).
+        still.removeAttribute("src");
+        still.style.display = "none";
       } else if(T.scene){
         still.style.display = "";
         still.src = "scenes/" + T.scene + ".jpg";
