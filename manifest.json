@@ -1,6 +1,6 @@
 {
-  "name": "Mom's Solitaire",
-  "short_name": "Mom's Solitaire",
+  "name": "La La Solitaire",
+  "short_name": "La La Solitaire",
   "description": "Klondike solitaire for Mom, from Jason",
   "start_url": "./index.html",
   "scope": "./",
