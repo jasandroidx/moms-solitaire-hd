@@ -941,6 +941,14 @@ class Renderer {
 const CUSTOM = {
   title: "🌸 Mom's Solitaire",
   subtitle: "for Mom, from Jason",
+  hintLines: [
+    "How the hell should I know?? 🤷",
+    "Maybe you should play FreeCell... or Go Fish! 🃏",
+    "Have you tried moving a card? That usually helps. 😉",
+    "Look at the board with your eyes, Mom! 👀",
+    "Official Rules: https://en.wikipedia.org/wiki/Klondike_(solitaire) 📖",
+    "I'm a solitaire game, not a psychic! 🔮",
+  ],
   // lines on the intro screen — put your jokes here
   introLines: [
     "Welcome in! This deck was built just for you. 💛",
@@ -1761,6 +1769,8 @@ class UI {
       if(e.key==='Escape'){
         if($('#help').classList.contains('show')) $('#help').classList.remove('show');
         if($('#scopePop').classList.contains('show')) Scope.close();
+        if($('#winoverlay').classList.contains('show')) $('#winoverlay').classList.remove('show');
+        if($('#intro') && !$('#intro').classList.contains('hide')) $('#intro').classList.add('hide');
         return;
       }
       const k=e.key.toLowerCase();
@@ -1903,7 +1913,7 @@ class UI {
     const now=Date.now();
     // VERY rare card-click gag: 0.6% chance, max once per 5 minutes
     if(Math.random()<CUSTOM.vox.rareCardChance&&now-(this._lastRare||0)>300000){ this._lastRare=now; Vox.play('rareCard'); }
-    // tap with a selection: destination?
+    // tap with an active selection: treat as moving selection to targeted destination
     const sel=this.view.selected;
     if(sel){
       if(loc.zone==='tableau'&&sel.zone==='tableau'&&sel.col===loc.col){ this.view.selected=null; this.view.render(this); return; }
@@ -1913,15 +1923,29 @@ class UI {
       else if(loc.zone==='tableau') r=this.eng.moveToTableau(sel,loc.col);
       else r={ok:false};
       if(r&&r.ok){ Sfx.flip(); this.view.selected=null; this.afterMove('Moved.');
-        if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
-      else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
-      return;
+        if(loc.zone==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); return; }
+      // If move with current selection failed, clear selection and try auto-tapping the tapped card
+      this.view.selected=null;
     }
-    // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
-    if(loc.zone==='foundation') return;
-    // else select the sequence (R1)
+    // No selection (or cleared selection): try single-tap auto-move
+    if(loc.zone!=='foundation'){
+      const autoRes = this.eng.tapCard(loc);
+      if(autoRes.ok){
+        Sfx.flip();
+        this.afterMove('Moved.');
+        if(autoRes.toCol != null) this.commentate('tableau', autoRes.cards ? autoRes.cards[0] : null);
+        else this.commentate('foundation', autoRes.card);
+        return;
+      }
+    }
+    // Fallback: select card for manual drag or explicit two-tap placement
     if(loc.zone==='waste'){ this.view.selected={zone:'waste'}; }
-    else if(loc.zone==='tableau'){ const seq=this.eng.movableSequence(loc.col); if(seq.length) this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx}; }
+    else if(loc.zone==='tableau'){
+      const seq=this.eng.movableSequence(loc.col);
+      if(seq.length&&loc.idx>=colTopIdx(this.eng.state.tableau[loc.col],seq)) {
+        this.view.selected={zone:'tableau',col:loc.col,idx:loc.idx};
+      }
+    }
     this.view.render(this); Sfx.click();
   }
   onPileTap(pile){
@@ -1936,7 +1960,11 @@ class UI {
   doHint(){
     if(this.messy) return;
     Sfx.click(); Vox.play('hint');
-    this.say('How the hell should I know??');
+    const lines = CUSTOM.hintLines || ['How the hell should I know?? 🤷'];
+    if(!this._hintIdx) this._hintIdx = 0;
+    const line = lines[this._hintIdx % lines.length];
+    this._hintIdx++;
+    this.say(line);
   }
   autoLoop(){
     if(!this.eng.canAutoComplete()){ Sfx.bad(); return; }
