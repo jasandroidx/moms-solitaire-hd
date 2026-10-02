@@ -540,6 +540,7 @@ body[data-scene]::after{
   <button class="btn sm" id="bSound">SFX</button>
   <button class="btn" id="bMusic">Music</button>
   <button class="btn" id="bHelp">Help</button>
+  <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
 <audio id="radioAudio" preload="none"></audio>
@@ -2029,6 +2030,27 @@ class UI {
     $('#bScope').onclick=()=>Scope.open();
     $('#scopePop .scope-close').onclick=()=>Scope.close();
     $('#scopePop').addEventListener('click',e=>{ if(e.target.id==='scopePop') Scope.close(); });
+    let deferredInstallPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      const bInst = $('#bInstall');
+      if (bInst) bInst.style.display = 'inline-block';
+    });
+    const bInst = $('#bInstall');
+    if (bInst) {
+      bInst.onclick = () => {
+        if (deferredInstallPrompt) {
+          deferredInstallPrompt.prompt();
+          deferredInstallPrompt.userChoice.then((choice) => {
+            if (choice.outcome === 'accepted') {
+              bInst.style.display = 'none';
+            }
+            deferredInstallPrompt = null;
+          });
+        }
+      };
+    }
     $('#bHelp').onclick=()=>$('#help').classList.add('show');
     $('#bCloseHelp').onclick=()=>$('#help').classList.remove('show');
     document.addEventListener('keydown',e=>{
@@ -2194,6 +2216,24 @@ class UI {
       else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
+    // double tap/click auto-foundation check for Chromebook trackpads & touchscreens
+    const cid = cardEl ? cardEl.dataset.cid : null;
+    if (cid && this._lastTapCid === cid && (now - (this._lastTapTime || 0)) < 350) {
+      if (this.selIsTop(loc)) {
+        const r = this.eng.moveToFoundation(loc);
+        if (r && r.ok) {
+          Sfx.placeCard(true);
+          this.view.selected = null;
+          this.afterMove(cardName(r.card) + ' to foundation.');
+          this.commentate('foundation', r.card);
+          this._lastTapCid = null;
+          return;
+        }
+      }
+    }
+    this._lastTapCid = cid;
+    this._lastTapTime = now;
+
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
     if(loc.zone==='foundation') return;
     // else select the sequence (R1)
