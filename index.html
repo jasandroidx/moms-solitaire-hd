@@ -2377,6 +2377,13 @@ class UI {
       const cards=[...colEl.querySelectorAll('.card')];
       cards.slice(+d.el.dataset.idx).forEach(c=>c.classList.add('drag-src'));
     } else d.el.classList.add('drag-src');
+    // Cache pile layout bounding rectangles to eliminate layout thrashing during pointermove
+    d.piles = [...document.querySelectorAll('.pile,.tcol')].map(p => {
+      if (!p.isConnected) return null;
+      const r = p.getBoundingClientRect();
+      return { el: p, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    }).filter(Boolean);
+    d.activeDropPile = null;
     d.seq=seq; d.cw=cw; d.offU=offU; d.r0=r;
   }
   moveDrag(d){
@@ -2385,33 +2392,51 @@ class UI {
     this.updateDropHint(d);
   }
   updateDropHint(d){
-    document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
     if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
-    // Ordering/connection constraint: ghost element must be connected to DOM before measuring layout
-    if(!d.ghosts[0].isConnected) return;
-    const gx=d.ghosts[0].getBoundingClientRect();
-    const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
-    if(!pile) return;
-    const z=pile.dataset.zone, card=d.seq[0];
-    let ok=false;
-    if(z==='foundation'){ if(d.seq.length===1&&this.selIsTop(d.loc)) ok=this.eng.canPlaceOnFoundation(card); }
-    else if(z==='tableau'){
-      const toCol=+pile.dataset.col;
-      if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
+    // Derive ghost center position mathematically without querying layout/getBoundingClientRect
+    const dx = d.x - d.x0, dy = d.y - d.y0;
+    const gxCenter = d.r0.left + dx + d.cw / 2;
+    const gyCenter = d.r0.top + dy + (d.cw * 1.4) / 2;
+    const pile = this.pileAt(gxCenter, gyCenter, d.piles);
+
+    let ok = false;
+    let card = d.seq[0];
+    if(pile){
+      const z=pile.dataset.zone;
+      if(z==='foundation'){ if(d.seq.length===1&&this.selIsTop(d.loc)) ok=this.eng.canPlaceOnFoundation(card); }
+      else if(z==='tableau'){
+        const toCol=+pile.dataset.col;
+        if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
+      }
     }
-    if(ok) pile.classList.add('drop-ok');
+
+    const targetPile = ok ? pile : null;
+    if(d.activeDropPile === targetPile) return;
+
+    if(d.activeDropPile) {
+      d.activeDropPile.classList.remove('drop-ok');
+    }
+    if(targetPile) {
+      targetPile.classList.add('drop-ok');
+    }
+    d.activeDropPile = targetPile;
   }
   // forgiving drop targeting: 16px of grace around every pile, nearest center wins
-  pileAt(x,y){
+  pileAt(x,y,piles){
     let best=null,bestD=Infinity;
-    document.querySelectorAll('.pile,.tcol').forEach(p=>{
-      // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
-      if(!p.isConnected) return;
-      const r=p.getBoundingClientRect(), pad=16;
-      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
-      const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
-      if(d<bestD){ bestD=d; best=p; }
-    });
+    const items = piles || [...document.querySelectorAll('.pile,.tcol')].map(p => {
+      if (!p.isConnected) return null;
+      const r = p.getBoundingClientRect();
+      return { el: p, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 };
+    }).filter(Boolean);
+
+    const pad = 16;
+    for (let i = 0; i < items.length; i++) {
+      const p = items[i];
+      if (x < p.left - pad || x > p.right + pad || y < p.top - pad || y > p.bottom + pad) continue;
+      const dx = x - p.cx, dy = y - p.cy, d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = p.el; }
+    }
     return best;
   }
   // is this loc the top card of its pile (the only card a foundation can take)?
@@ -2424,15 +2449,15 @@ class UI {
   }
   onUp(e,cancelled){
     const d=this.drag; this.drag=null;
-    // Ordering/connection constraint: read ghost rect BEFORE clearing #draglayer; ensure ghost is connected
-    const gx=(d&&d.ghosts&&d.ghosts[0]&&d.ghosts[0].isConnected)?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
     if(cancelled){ return; } // system-cancelled gesture: drop silently, never convert to a tap
     if(!d.active){ this.onTap(d.el,d.loc); return; }
     // drop: forgiving hit-test over piles; silent cancel on empty table / source pile
-    const pile=gx?this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2):null;
+    const gxCenter = d.r0.left + (d.x - d.x0) + d.cw / 2;
+    const gyCenter = d.r0.top + (d.y - d.y0) + (d.cw * 1.4) / 2;
+    const pile = this.pileAt(gxCenter, gyCenter, d.piles);
     let done=false, illegal=false;
     if(pile){
       const z=pile.dataset.zone;
