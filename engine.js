@@ -365,28 +365,29 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   timeoutMs = timeoutMs || 800;
   const t0 = Date.now();
   const top = a => a[a.length - 1];
-  const cloneCard = c => ({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp });
-  // Fast array cloning to avoid .map() closure/array allocation overhead during solver search
-  const cloneCol = col => {
-    const len = col.length;
-    const res = new Array(len);
-    for (let i = 0; i < len; i++) res[i] = cloneCard(col[i]);
-    return res;
-  };
+  // Fast array cloning without re-allocating 52 card objects per search state.
+  // Card objects are immutable except faceUp, which is copied when flipped.
   const cloneState = s => ({
-    stock: cloneCol(s.stock),
-    waste: cloneCol(s.waste),
+    stock: s.stock.slice(),
+    waste: s.waste.slice(),
     foundations: {
-      spades: cloneCol(s.foundations.spades),
-      hearts: cloneCol(s.foundations.hearts),
-      diamonds: cloneCol(s.foundations.diamonds),
-      clubs: cloneCol(s.foundations.clubs)
+      spades: s.foundations.spades.slice(),
+      hearts: s.foundations.hearts.slice(),
+      diamonds: s.foundations.diamonds.slice(),
+      clubs: s.foundations.clubs.slice()
     },
     tableau: [
-      cloneCol(s.tableau[0]), cloneCol(s.tableau[1]), cloneCol(s.tableau[2]), cloneCol(s.tableau[3]),
-      cloneCol(s.tableau[4]), cloneCol(s.tableau[5]), cloneCol(s.tableau[6])
+      s.tableau[0].slice(), s.tableau[1].slice(), s.tableau[2].slice(), s.tableau[3].slice(),
+      s.tableau[4].slice(), s.tableau[5].slice(), s.tableau[6].slice()
     ]
   });
+  const flipTopFaceUp = col => {
+    if (col.length > 0) {
+      const idx = col.length - 1;
+      const c = col[idx];
+      if (!c.faceUp) col[idx] = { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: true };
+    }
+  };
   const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
@@ -417,7 +418,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         const t = top(col);
         if (t.faceUp && canF(t, s.foundations) && safeF(t, s.foundations)) {
           s.foundations[t.suit].push(col.pop());
-          if (col.length && !top(col).faceUp) top(col).faceUp = true;
+          flipTopFaceUp(col);
           moved = true; break;
         }
       }
@@ -479,7 +480,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
       if (t.faceUp && canF(t, cur.foundations)) {
         const n = cloneState(cur), card = n.tableau[c].pop();
         n.foundations[card.suit].push(card);
-        if (n.tableau[c].length && !top(n.tableau[c]).faceUp) top(n.tableau[c]).faceUp = true;
+        flipTopFaceUp(n.tableau[c]);
         moves.push([10, n]);
       }
     }
@@ -496,7 +497,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
-        if (n.tableau[a].length && !top(n.tableau[a]).faceUp) top(n.tableau[a]).faceUp = true;
+        flipTopFaceUp(n.tableau[a]);
         moves.push([exposes ? 8 : 4, n]);
       }
     }
@@ -509,8 +510,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     if (cur.stock.length || cur.waste.length) { // draw / recycle
       const n = cloneState(cur);
-      if (!n.stock.length) { while (n.waste.length) { const c = n.waste.pop(); c.faceUp = false; n.stock.push(c); } }
-      else for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) { const c = n.stock.pop(); c.faceUp = true; n.waste.push(c); }
+      if (!n.stock.length) {
+        while (n.waste.length) {
+          const c = n.waste.pop();
+          n.stock.push(c.faceUp ? { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: false } : c);
+        }
+      } else {
+        for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) {
+          const c = n.stock.pop();
+          n.waste.push(c.faceUp ? c : { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: true });
+        }
+      }
       moves.push([2, n]);
     }
     moves.sort((x, y) => x[0] - y[0]);
