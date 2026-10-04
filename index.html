@@ -2307,12 +2307,13 @@ class UI {
         }
       };
     }
-    $('#bHelp').onclick=()=>$('#help').classList.add('show');
-    $('#bCloseHelp').onclick=()=>$('#help').classList.remove('show');
+    $('#bHelp').onclick=()=>this.openHelp();
+    $('#bCloseHelp').onclick=()=>this.closeHelp();
+    $('#help').addEventListener('click',e=>{ if(e.target.id==='help') this.closeHelp(); });
     document.addEventListener('keydown',e=>{
       if(e.target.tagName==='INPUT') return;
       if(e.key==='Escape'){
-        if($('#help').classList.contains('show')) $('#help').classList.remove('show');
+        if($('#help').classList.contains('show')) this.closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
         if(Lens.on) Lens.close();
         return;
@@ -2505,6 +2506,20 @@ class UI {
     if(r&&r.ok){ Sfx.placeCard(z==='foundation'); this.view.selected=null; this.afterMove('Moved.');
       if(z==='foundation') this.commentate('foundation', r.card); else this.commentate('tableau', r.cards[0]); }
     else { Sfx.bad(); this.say('That move is not legal.'); }
+  }
+  openHelp(){
+    Sfx.click();
+    $('#help').classList.add('show');
+    const closeBtn=$('#bCloseHelp');
+    if(closeBtn) closeBtn.focus();
+  }
+  closeHelp(){
+    const help=$('#help');
+    if(help && help.classList.contains('show')){
+      help.classList.remove('show');
+      const btn=$('#bHelp');
+      if(btn) btn.focus();
+    }
   }
   doHint(){
     if(this.messy) return;
