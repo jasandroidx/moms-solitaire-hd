@@ -1388,6 +1388,12 @@ class Renderer {
   }
   clearPile(p){ p.querySelectorAll('.card').forEach(e=>e.remove()); }
   render(ui){
+    // Read and cache card width geometry BEFORE DOM mutations to prevent forced synchronous layout thrashing
+    const w = (this.stockEl && this.stockEl.isConnected) ? this.stockEl.getBoundingClientRect().width : 0;
+    if (w > 0) this._cw = w;
+    const cw = this._cw || 96;
+    const ch = cw * 1.4, offD = cw * 0.15, offU = cw * 0.32;
+
     const s=this.eng.state;
     // Card backs follow the scene: ocean/night scenes get their themed backs;
     // the green table keeps the family-photo backs (photoFor returns null off-table).
@@ -1410,9 +1416,6 @@ class Renderer {
     // waste: fan last 3
     this.clearPile(this.wasteEl);
     const show=s.waste.slice(-3);
-    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
-    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
-    const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});
       el.dataset.zone='waste'; el.dataset.wasteTop = (i===show.length-1)?'1':'0';
