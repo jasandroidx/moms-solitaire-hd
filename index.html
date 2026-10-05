@@ -678,7 +678,7 @@ body.deep-sleep #felt {
   <button class="btn" id="bScenery">Scenery Change</button>
   <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
   <button class="btn" id="bMusic" aria-pressed="true">Music</button>
-  <button class="btn" id="bHelp">Help</button>
+  <button class="btn" id="bHelp" aria-haspopup="dialog" aria-expanded="false">Help</button>
   <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
@@ -2307,12 +2307,24 @@ class UI {
         }
       };
     }
-    $('#bHelp').onclick=()=>$('#help').classList.add('show');
-    $('#bCloseHelp').onclick=()=>$('#help').classList.remove('show');
+    const closeHelp=()=>{
+      if($('#help').classList.contains('show')){
+        $('#help').classList.remove('show');
+        $('#bHelp').setAttribute('aria-expanded','false');
+        $('#bHelp').focus();
+      }
+    };
+    $('#bHelp').onclick=()=>{
+      $('#help').classList.add('show');
+      $('#bHelp').setAttribute('aria-expanded','true');
+      $('#bCloseHelp').focus();
+    };
+    $('#bCloseHelp').onclick=()=>closeHelp();
+    $('#help').addEventListener('click',e=>{ if(e.target.id==='help') closeHelp(); });
     document.addEventListener('keydown',e=>{
       if(e.target.tagName==='INPUT') return;
       if(e.key==='Escape'){
-        if($('#help').classList.contains('show')) $('#help').classList.remove('show');
+        if($('#help').classList.contains('show')) closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
         if(Lens.on) Lens.close();
         return;
