@@ -358,6 +358,20 @@ class GameEngine {
   }
 }
 
+// Pre-computed lookup tables for ultra-fast solver state key generation without string conversions.
+// Uses character ranges 200..251 (down), 256..307 (up), and 310..323 (foundations) to safely avoid
+// ASCII structural delimiters ';' (59) and '|' (124).
+const CARD_STR_DOWN = new Array(52);
+const CARD_STR_UP = new Array(52);
+for (let id = 0; id < 52; id++) {
+  CARD_STR_DOWN[id] = String.fromCharCode(200 + id); // char codes 200..251
+  CARD_STR_UP[id] = String.fromCharCode(256 + id);   // char codes 256..307
+}
+const FOUND_CHAR = new Array(14);
+for (let i = 0; i <= 13; i++) {
+  FOUND_CHAR[i] = String.fromCharCode(310 + i);      // char codes 310..323
+}
+
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -434,31 +448,28 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     if (s.stock.length || s.waste.length) return false;
     return s.tableau.every(col => col.every(c => c.faceUp));
   };
-  // Fast state key generator avoiding map/join temporary array allocations (~2.6x faster than .map().join())
+  // Pre-computed single-character lookup table key generator (~2x faster than stringifying numbers & delimiters)
   function key(s) {
     let str = '';
     const st = s.stock;
     for (let i = 0; i < st.length; i++) {
-      if (i > 0) str += ',';
-      str += st[i].id;
+      str += CARD_STR_DOWN[st[i].id];
     }
     str += ';';
     const w = s.waste;
     for (let i = 0; i < w.length; i++) {
-      if (i > 0) str += ',';
-      str += w[i].id;
+      str += CARD_STR_UP[w[i].id];
     }
     str += ';';
     const f = s.foundations;
-    str += f.spades.length + ',' + f.hearts.length + ',' + f.diamonds.length + ',' + f.clubs.length + ';';
+    str += FOUND_CHAR[f.spades.length] + FOUND_CHAR[f.hearts.length] + FOUND_CHAR[f.diamonds.length] + FOUND_CHAR[f.clubs.length] + ';';
     const tab = s.tableau;
     for (let c = 0; c < 7; c++) {
-      if (c > 0) str += '|';
+      str += '|';
       const col = tab[c];
       for (let i = 0; i < col.length; i++) {
-        if (i > 0) str += ',';
         const card = col[i];
-        str += (card.faceUp ? 'u' : 'd') + card.id;
+        str += card.faceUp ? CARD_STR_UP[card.id] : CARD_STR_DOWN[card.id];
       }
     }
     return str;
