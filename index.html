@@ -144,8 +144,119 @@ header h1 small{display:block;font-size:.55em;font-weight:400;opacity:.85;}
 /* ---------- misc ---------- */
 #announcer{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
 #hintbar{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:55;
-  background:rgba(20,20,25,.88);color:#fff;padding:10px 18px;border-radius:14px;font-size:16px;display:none;}
-#hintbar.whisper{font-style:italic;font-size:13px;letter-spacing:.08em;opacity:.92;background:rgba(30,30,40,.88);}
+  background:rgba(18,12,8,.92);color:#f6ecd8;
+  border:2px solid rgba(230,197,110,.55);
+  font-family:Georgia, Palatino, serif;font-style:italic;
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  font-size:22px;padding:14px 22px;border-radius:16px;
+  max-width:92vw;text-align:center;line-height:1.6;
+  letter-spacing:.02em;
+  transition:opacity .5s, transform .5s;
+}
+#hintbar.whisper{font-style:italic;font-size:20px;letter-spacing:.08em;opacity:.95;background:rgba(30,30,40,.92);}
+#hintbar.mom-font{font-size:28px;padding:18px 32px;border-radius:20px;}
+/* ---------- familiar sidebar ---------- */
+#famWrap{position:fixed;left:10px;bottom:100px;z-index:45;display:flex;flex-direction:column;align-items:center;gap:4px;}
+#famWrap button{background:none;border:none;cursor:pointer;padding:4px;font-size:20px;opacity:.5;transition:opacity .2s;}
+#famWrap button:hover{opacity:1;}
+#famWrap .fam-label{font-size:10px;color:#fff;opacity:.5;font-family:Georgia,serif;}
+#famBar{width:140px;max-height:200px;overflow-y:auto;background:rgba(0,0,0,.6);border-radius:12px;padding:8px;display:none;flex-direction:column;gap:6px;backdrop-filter:blur(4px);}
+#famBar.show{display:flex;}
+.fam-item{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:8px;cursor:pointer;transition:background .2s;}
+.fam-item:hover{background:rgba(255,255,255,.1);}
+.fam-item.equipped{background:rgba(232,182,76,.2);border:1px solid var(--gold,#ffd75e);}
+.fam-item img{width:28px;height:28px;object-fit:contain;}
+.fam-item .fam-name{font-size:12px;color:#f6ecd8;font-family:Georgia,serif;}
+.fam-item .fam-lvl{font-size:10px;color:#ffd75e;}
+/* ---------- sprite animations ---------- */
+@keyframes nimbusFall{0%{transform:translateY(-60px) rotate(0);opacity:1;}20%{transform:translateY(20px) rotate(15deg);opacity:1;}40%{transform:translateY(0) rotate(-5deg);opacity:1;}60%{transform:translateY(5px) rotate(3deg);opacity:1;}80%{transform:translateY(0) rotate(-2deg);opacity:1;}100%{transform:translateY(0) rotate(0);opacity:1;}}
+@keyframes nimbusSuck{0%{transform:scale(1);}50%{transform:scale(.85);}100%{transform:scale(1);}}
+@keyframes octoCrash{0%{transform:translateY(-80px) scale(1.2);opacity:0;}30%{transform:translateY(10px) scale(.9) rotate(-10deg);opacity:1;}50%{transform:translateY(-5px) scale(1.05) rotate(5deg);opacity:1;}70%{transform:translateY(2px) scale(.98) rotate(-2deg);opacity:1;}100%{transform:translateY(0) scale(1) rotate(0);opacity:1;}}
+@keyframes cardSuck{to{transform:translate(var(--suck-x,0),-100vh) scale(.3);opacity:0;}}
+@keyframes cardDeal{from{transform:translateY(-48px) scale(.5) rotate(-8deg);opacity:0;}}
+@keyframes familiarFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes familiarBounce{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-12px) scale(1.08);}}
+@keyframes famGlow{0%,100%{filter:brightness(1);}50%{filter:brightness(1.3) drop-shadow(0 0 6px var(--accent,#ffd75e));}}
+/* Poop character animations */
+@keyframes poopStreak{0%{transform:translateY(0) scale(1);opacity:1;}50%{transform:translateY(-10px) scale(1.1) rotate(-5deg);opacity:.8;}100%{transform:translateY(0) scale(1) rotate(0);opacity:0;}}
+@keyframes poopFart{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.2) rotate(10deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopCelebrate{0%{transform:scale(1);opacity:1;}30%{transform:scale(1.1) rotate(5deg);}60%{transform:scale(1.2) rotate(0);}90%{transform:scale(1.1) rotate(-5deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopWave{0%{transform:translateY(0);}50%{transform:translateY(-5px) rotate(10deg);}100%{transform:translateY(0);}}
+@keyframes poopSurprised{0%{transform:scale(1);}50%{transform:scale(1.1) rotate(15deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopSad{0%{transform:scale(1);}50%{transform:scale(.9) rotate(5deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopSleep{0%{transform:translateY(0);}50%{transform:translateY(-3px) rotate(10deg);}100%{transform:translateY(0);}}
+@keyframes poopThinking{0%{transform:scale(1);}50%{transform:scale(1.05) rotate(5deg);}100%{transform:scale(1) rotate(0);}}
+.familiar{position:fixed;z-index:60;pointer-events:none;will-change:transform;}
+.familiar svg{width:48px;height:48px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));}
+.familiar.equipped svg{animation:famGlow 2s ease-in-out infinite;}
+/* ---------- photo slideshow during win ---------- */
+#photoShow{position:fixed;inset:0;z-index:85;pointer-events:none;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:rgba(0,0,0,.5);backdrop-filter:blur(8px);}
+#photoShow .photo-frame{width:min(320px,85vw);height:min(440px,88vh);border-radius:24px;border:5px solid rgba(255,255,255,.7);box-shadow:0 20px 60px rgba(0,0,0,.5);background-size:cover;background-position:center;animation:photoFrameIn .6s cubic-bezier(.2,.9,.3,1.1);}
+@keyframes photoFrameIn{from{transform:scale(.5) rotate(-8deg);opacity:0;}}
+#photoShow .photo-caption{font-family:Georgia,serif;font-size:28px;color:#ffe699;text-shadow:0 4px 12px rgba(0,0,0,.6);animation:photoCaptionIn .8s ease-out .3s both;}
+@keyframes photoCaptionIn{from{transform:translateY(20px);opacity:0;}}
+#photoShow .photo-nav{position:absolute;bottom:20px;display:flex;gap:12px;}
+#photoShow .photo-nav button{background:rgba(255,255,255,.2);color:#fff;border:2px solid rgba(255,255,255,.4);border-radius:50%;width:44px;height:44px;font-size:20px;cursor:pointer;backdrop-filter:blur(4px);}
+#photoShow .photo-nav button:hover{background:rgba(255,255,255,.4);}
+/* ---------- random theme button ---------- */
+#bRandom{background:linear-gradient(180deg,#ffd966,#e5b338) !important;color:#2d1e08 !important;border:1px solid #b88a22 !important;}
+/* ---------- card personality ---------- */
+.card[data-rank="1"]:hover .front{animation:aceSalute .6s ease-in-out;}
+.card[data-rank="13"]:hover .front{animation:kingCrown .6s ease-in-out;}
+.card[data-rank="12"]:hover .front{animation:queenCurve .6s ease-in-out;}
+.card[data-rank="11"]:hover .front{animation:jackTip .6s ease-in-out;}
+.card[data-suit="hearts"]:hover .front{animation:heartFlutter .4s ease-in-out;}
+.card[data-suit="spades"]:hover .front{animation:spadeSalute .4s ease-in-out;}
+.card[data-suit="diamonds"]:hover .front{animation:diamondSparkle .4s ease-in-out;}
+.card[data-suit="clubs"]:hover .front{animation:clubWobble .4s ease-in-out;}
+@keyframes aceSalute{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-8px) rotate(-3deg);}60%{transform:translateY(-4px) rotate(2deg);}}
+@keyframes kingCrown{0%,100%{transform:translateY(0) scale(1);}40%{transform:translateY(-10px) scale(1.06) rotate(2deg);}70%{transform:translateY(-6px) scale(1.03);}}
+@keyframes queenCurve{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-6px) rotate(4deg) scale(1.04);}60%{transform:translateY(-3px) rotate(-2deg);}}
+@keyframes jackTip{0%,100%{transform:translateY(0) rotate(0);}40%{transform:translateY(-5px) rotate(-6deg);}80%{transform:translateY(-2px) rotate(3deg);}}
+@keyframes heartFlutter{0%,100%{transform:translateY(0);}25%{transform:translateY(-4px) scaleY(1.08);}50%{transform:translateY(-2px) scaleY(.95);}75%{transform:translateY(-5px) scaleY(1.04);}}
+@keyframes spadeSalute{0%,100%{transform:translateY(0);}30%{transform:translateY(-6px) rotate(-2deg);}60%{transform:translateY(-2px) rotate(1deg);}}
+@keyframes diamondSparkle{0%,100%{filter:brightness(1);}50%{filter:brightness(1.4) drop-shadow(0 0 6px rgba(255,215,94,.6));}}
+@keyframes clubWobble{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+/* ---------- sprite animations ---------- */
+@keyframes nimbusFall{0%{transform:translateY(-60px) rotate(0);opacity:1;}20%{transform:translateY(20px) rotate(15deg);opacity:1;}40%{transform:translateY(0) rotate(-5deg);opacity:1;}60%{transform:translateY(5px) rotate(3deg);opacity:1;}80%{transform:translateY(0) rotate(-2deg);opacity:1;}100%{transform:translateY(0) rotate(0);opacity:1;}}
+@keyframes nimbusSuck{0%{transform:scale(1);}50%{transform:scale(.85);}100%{transform:scale(1);}}
+@keyframes octoCrash{0%{transform:translateY(-80px) scale(1.2);opacity:0;}30%{transform:translateY(10px) scale(.9) rotate(-10deg);opacity:1;}50%{transform:translateY(-5px) scale(1.05) rotate(5deg);opacity:1;}70%{transform:translateY(2px) scale(.98) rotate(-2deg);opacity:1;}100%{transform:translateY(0) scale(1) rotate(0);opacity:1;}}
+@keyframes cardSuck{to{transform:translate(var(--suck-x,0),-100vh) scale(.3);opacity:0;}}
+@keyframes cardDeal{from{transform:translateY(-48px) scale(.5) rotate(-8deg);opacity:0;}}
+@keyframes familiarFloat{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
+@keyframes familiarBounce{0%,100%{transform:translateY(0) scale(1);}50%{transform:translateY(-12px) scale(1.08);}}
+@keyframes famGlow{0%,100%{filter:brightness(1);}50%{filter:brightness(1.3) drop-shadow(0 0 6px var(--accent,#ffd75e));}}
+/* Poop character animations */
+@keyframes poopStreak{0%{transform:translateY(0) scale(1);opacity:1;}50%{transform:translateY(-10px) scale(1.1) rotate(-5deg);opacity:.8;}100%{transform:translateY(0) scale(1) rotate(0);opacity:0;}}
+@keyframes poopFart{0%{transform:scale(1);opacity:1;}50%{transform:scale(1.2) rotate(10deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopCelebrate{0%{transform:scale(1);opacity:1;}30%{transform:scale(1.1) rotate(5deg);}60%{transform:scale(1.2) rotate(0);}90%{transform:scale(1.1) rotate(-5deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopWave{0%{transform:translateY(0);}50%{transform:translateY(-5px) rotate(10deg);}100%{transform:translateY(0);}}
+@keyframes poopSurprised{0%{transform:scale(1);}50%{transform:scale(1.1) rotate(15deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopSad{0%{transform:scale(1);}50%{transform:scale(.9) rotate(5deg);}100%{transform:scale(1) rotate(0);}}
+@keyframes poopSleep{0%{transform:translateY(0);}50%{transform:translateY(-3px) rotate(10deg);}100%{transform:translateY(0);}}
+@keyframes poopThinking{0%{transform:scale(1);}50%{transform:scale(1.05) rotate(5deg);}100%{transform:scale(1) rotate(0);}}
+.familiar{position:fixed;z-index:60;pointer-events:none;will-change:transform;}
+.familiar svg{width:48px;height:48px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.4));}
+.familiar.equipped svg{animation:famGlow 2s ease-in-out infinite;}
+/* ---------- random theme button ---------- */
+#bRandom{background:linear-gradient(180deg,#ffd966,#e5b338) !important;color:#2d1e08 !important;border:1px solid #b88a22 !important;}
+/* ---------- card personality ---------- */
+.card[data-rank="1"]:hover .front{animation:aceSalute .6s ease-in-out;}
+.card[data-rank="13"]:hover .front{animation:kingCrown .6s ease-in-out;}
+.card[data-rank="12"]:hover .front{animation:queenCurve .6s ease-in-out;}
+.card[data-rank="11"]:hover .front{animation:jackTip .6s ease-in-out;}
+.card[data-suit="hearts"]:hover .front{animation:heartFlutter .4s ease-in-out;}
+.card[data-suit="spades"]:hover .front{animation:spadeSalute .4s ease-in-out;}
+.card[data-suit="diamonds"]:hover .front{animation:diamondSparkle .4s ease-in-out;}
+.card[data-suit="clubs"]:hover .front{animation:clubWobble .4s ease-in-out;}
+@keyframes aceSalute{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-8px) rotate(-3deg);}60%{transform:translateY(-4px) rotate(2deg);}}
+@keyframes kingCrown{0%,100%{transform:translateY(0) scale(1);}40%{transform:translateY(-10px) scale(1.06) rotate(2deg);}70%{transform:translateY(-6px) scale(1.03);}}
+@keyframes queenCurve{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-6px) rotate(4deg) scale(1.04);}60%{transform:translateY(-3px) rotate(-2deg);}}
+@keyframes jackTip{0%,100%{transform:translateY(0) rotate(0);}40%{transform:translateY(-5px) rotate(-6deg);}80%{transform:translateY(-2px) rotate(3deg);}}
+@keyframes heartFlutter{0%,100%{transform:translateY(0);}25%{transform:translateY(-4px) scaleY(1.08);}50%{transform:translateY(-2px) scaleY(.95);}75%{transform:translateY(-5px) scaleY(1.04);}}
+@keyframes spadeSalute{0%,100%{transform:translateY(0);}30%{transform:translateY(-6px) rotate(-2deg);}60%{transform:translateY(-2px) rotate(1deg);}}
+@keyframes diamondSparkle{0%,100%{filter:brightness(1);}50%{filter:brightness(1.4) drop-shadow(0 0 6px rgba(255,215,94,.6));}}
+@keyframes clubWobble{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
 /* ---------- fake system update ---------- */
 #updateoverlay{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;background:#0b0e14;}
 #updateoverlay.show{display:flex;}
@@ -209,7 +320,92 @@ button:focus-visible,.card:focus-visible{outline:3px solid var(--gold);outline-o
   .card .in{transition:none;}
   .card.hintglow .front{animation:none;outline:4px solid var(--gold);}
 }
-/* ---------- cool layer: fx canvas, vignette, deal, wiggle, intro ---------- */
+/* ---------- commentator: bigger, stays longer ---------- */
+#hintbar{
+  background:rgba(18,12,8,.92);color:#f6ecd8;
+  border:2px solid rgba(230,197,110,.55);
+  font-family:Georgia, Palatino, serif;font-style:italic;
+  box-shadow:0 10px 28px rgba(0,0,0,.35);
+  font-size:20px;padding:14px 22px;border-radius:16px;
+  max-width:90vw;text-align:center;line-height:1.5;
+  letter-spacing:.02em;
+  transition:opacity .5s, transform .5s;
+}
+#hintbar.whisper{font-style:italic;font-size:18px;letter-spacing:.08em;opacity:.95;background:rgba(30,30,40,.92);}
+#hintbar.mom-font{font-size:26px;padding:16px 28px;border-radius:20px;}
+
+/* ---------- card personality: rank hover animations ---------- */
+.card[data-rank="1"]:hover .front{animation:aceSalute .6s ease-in-out;}
+.card[data-rank="13"]:hover .front{animation:kingCrown .6s ease-in-out;}
+.card[data-rank="12"]:hover .front{animation:queenCurve .6s ease-in-out;}
+.card[data-rank="11"]:hover .front{animation:jackTip .6s ease-in-out;}
+.card[data-suit="hearts"]:hover .front{animation:heartFlutter .4s ease-in-out;}
+.card[data-suit="spades"]:hover .front{animation:spadeSalute .4s ease-in-out;}
+.card[data-suit="diamonds"]:hover .front{animation:diamondSparkle .4s ease-in-out;}
+.card[data-suit="clubs"]:hover .front{animation:clubWobble .4s ease-in-out;}
+
+@keyframes aceSalute{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-8px) rotate(-3deg);}60%{transform:translateY(-4px) rotate(2deg);}}
+@keyframes kingCrown{0%,100%{transform:translateY(0) scale(1);}40%{transform:translateY(-10px) scale(1.06) rotate(2deg);}70%{transform:translateY(-6px) scale(1.03);}}
+@keyframes queenCurve{0%,100%{transform:translateY(0) rotate(0);}30%{transform:translateY(-6px) rotate(4deg) scale(1.04);}60%{transform:translateY(-3px) rotate(-2deg);}}
+@keyframes jackTip{0%,100%{transform:translateY(0) rotate(0);}40%{transform:translateY(-5px) rotate(-6deg);}80%{transform:translateY(-2px) rotate(3deg);}}
+@keyframes heartFlutter{0%,100%{transform:translateY(0);}25%{transform:translateY(-4px) scaleY(1.08);}50%{transform:translateY(-2px) scaleY(.95);}75%{transform:translateY(-5px) scaleY(1.04);}}
+@keyframes spadeSalute{0%,100%{transform:translateY(0);}30%{transform:translateY(-6px) rotate(-2deg);}60%{transform:translateY(-2px) rotate(1deg);}}
+@keyframes diamondSparkle{0%,100%{filter:brightness(1);}50%{filter:brightness(1.4) drop-shadow(0 0 6px rgba(255,215,94,.6));}}
+@keyframes clubWobble{0%,100%{transform:translateX(0);}25%{transform:translateX(-3px);}75%{transform:translateX(3px);}}
+
+/* 3D card flip */
+.card .in{transform-style:preserve-3d;transition:transform .35s cubic-bezier(.4,0,.2,1);}
+.card.flipped .in{transform:rotateY(180deg);}
+.front{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+.back{backface-visibility:hidden;-webkit-backface-visibility:hidden;}
+
+/* spring bounce for card placement */
+.card.placed{animation:cardPlaceSpring .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes cardPlaceSpring{0%{transform:scale(.85) rotate(-2deg);}60%{transform:scale(1.06) rotate(1deg);}100%{transform:scale(1) rotate(0);}}
+
+/* clip-path win reveal */
+.win-reveal{clip-path:polygon(0 0,100% 0,100% 0%,0% 0%);animation:revealOpen 1.2s cubic-bezier(.2,.9,.3,1.1) forwards;}
+@keyframes revealOpen{to{clip-path:polygon(0 0,100% 0,100% 100%,0% 100%);}}
+
+@keyframes photoCaptionIn{from{transform:translateY(20px);opacity:0;}}
+
+/* ---------- ambient particles (theme-matched) ---------- */
+#ambientParticles{position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;}
+.ambient-particle{position:absolute;pointer-events:none;will-change:transform,opacity;}
+
+/* ---------- curious idle stage ---------- */
+.card.curious{animation:cardCurious 2s ease-in-out infinite;}
+@keyframes cardCurious{0%,100%{transform:translateY(0);}50%{transform:translateY(-3px);}}
+
+/* ---------- bored idle stage ---------- */
+.card.bored{animation:cardBored 4s ease-in-out infinite;}
+@keyframes cardBored{0%,100%{transform:rotate(0);}25%{transform:rotate(-1deg) translateY(-2px);}75%{transform:rotate(1deg) translateY(-1px);}}
+
+/* ---------- deep sleep overlay ---------- */
+.deep-sleep-overlay{position:fixed;inset:0;z-index:50;pointer-events:none;background:radial-gradient(ellipse at 50% 50%,transparent 40%,rgba(0,0,0,.55) 100%);opacity:0;transition:opacity 2s ease;}
+.deep-sleep-overlay.show{opacity:1;}
+
+/* ---------- theme randomize button ---------- */
+#bRandom{background:linear-gradient(180deg,#ffd966,#e5b338) !important;color:#2d1e08 !important;border:1px solid #b88a22 !important;}
+
+/* ---------- responsive touch improvements ---------- */
+@media (hover:none) and (pointer:coarse){
+  .card:hover{transform:none !important;}
+  #tableau .card:hover{transform:none !important;}
+  .btn{padding:14px 20px;font-size:18px;}
+  #hintbar{font-size:22px;padding:16px 24px;}
+  #hintbar.mom-font{font-size:28px;padding:18px 30px;}
+  .slot{min-height:44px;}
+}
+
+/* ---------- backdrop-filter polish ---------- */
+#winoverlay{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+#help{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);}
+#intro{backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+#scopePop{backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);}
+
+/* ---------- paper grain on card faces ---------- */
+.front{background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 280' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='280' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");background-blend-mode:soft-light;}
 #fx{position:fixed;inset:0;z-index:1;pointer-events:none;}
 #scene{position:fixed;inset:0;z-index:0;pointer-events:none;display:none;}
 body[data-scene] #scene{display:block;}
@@ -239,6 +435,20 @@ header,#board{position:relative;z-index:3;}
 @keyframes cardSleep{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(6px) rotate(3deg) scale(0.98);}}
 .zzz-bubble{position:absolute;z-index:60;pointer-events:none;font-family:Georgia,serif;font-weight:700;color:#ffd75e;text-shadow:0 2px 4px rgba(0,0,0,0.6);font-size:22px;animation:floatZzz 2.4s ease-out forwards;}
 @keyframes floatZzz{0%{opacity:0;transform:translate(0, 0) scale(0.6);}20%{opacity:1;}100%{opacity:0;transform:translate(18px, -45px) scale(1.3);}}
+/* ---------- Happy Crappy: the poop-emoji familiar ---------- */
+.poop-buddy{position:fixed;right:18px;bottom:64px;z-index:75;width:96px;height:96px;pointer-events:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));animation:poopPop .6s cubic-bezier(.2,1.6,.4,1),poopBob 3s ease-in-out 1s infinite;}
+.poop-buddy img{width:100%;height:100%;object-fit:contain;display:block;}
+/* unlock splash: "What a piece of shit." */
+.poop-splash{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .45s;}
+.poop-splash.show{opacity:1;}
+.poop-splash span{font-family:Georgia,serif;font-weight:900;font-size:min(64px,9vw);color:#ffe699;text-shadow:0 6px 24px rgba(0,0,0,.7),0 0 60px rgba(255,150,50,.35);transform:rotate(-4deg);text-align:center;padding:0 16px;}
+@keyframes poopPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
+@keyframes poopBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.poop-buddy.react{animation:poopWiggle .7s ease-in-out;}
+@keyframes poopWiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-14deg) scale(1.08);}50%{transform:rotate(12deg);}75%{transform:rotate(-8deg) scale(1.05);}}
+.poop-bubble{position:fixed;right:96px;bottom:128px;z-index:76;max-width:230px;pointer-events:none;background:#fffbe8;color:#4a3418;font-family:Georgia,serif;font-weight:700;font-size:17px;padding:10px 14px;border-radius:16px;border:2px solid #4a3418;box-shadow:0 4px 12px rgba(0,0,0,.35);opacity:0;transform:scale(.7);transform-origin:bottom right;transition:opacity .25s,transform .25s;}
+.poop-bubble.show{opacity:1;transform:scale(1);}
+.poop-bubble:after{content:'';position:absolute;right:-8px;bottom:14px;width:14px;height:14px;background:#fffbe8;border-right:2px solid #4a3418;border-bottom:2px solid #4a3418;transform:rotate(-45deg);}
 #intro{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;
   background:rgba(8, 14, 10, 0.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto;}
 #intro.hide{display:none;}
@@ -675,9 +885,10 @@ body.deep-sleep #felt {
   <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
   <button class="btn" id="bHint">Hint</button>
   <button class="btn" id="bStyle">Style</button>
-  <button class="btn" id="bScenery">Scenery Change</button>
+  <button class="btn" id="bScenery">Scenery</button>
   <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
   <button class="btn" id="bMusic" aria-pressed="true">Music</button>
+  <button class="btn" id="bRandom" title="Random theme" aria-label="Random theme">🎲</button>
   <button class="btn" id="bHelp">Help</button>
   <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
@@ -1515,9 +1726,68 @@ const CUSTOM = {
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
-  musicOn: true,
+  musicOn: false,
   sparkles: true,
-  // hushed golf-commentary narration of her moves — set false to shut him up
+  // familiar: pet that comes to games with mom
+  animations: {
+    poop: {
+      idle: 'famBounce',
+      happy: 'famGlow',
+      win: 'famGlow',
+      sit: 'famFloat',
+      // NEW: animations for Poop
+      streak: 'poopStreak',
+      fart: 'poopFart',
+      celebrate: 'poopCelebrate',
+      wave: 'poopWave',
+      surprised: 'poopSurprised',
+      sad: 'poopSad',
+      sleep: 'poopSleep',
+      thinking: 'poopThinking',
+    },
+  },
+  sounds: {
+    poop: {
+      plop: ['boing.mp3', 'card-place.mp3'],
+      squeak: ['clown-horn.mp3'],
+      happy: ['wow-m.mp3'],
+      win: ['audience-cheer-clap.mp3'],
+      idle: ['goofy-spring-bounces.mp3'],
+      // NEW: Poop sounds
+      fart: ['clown-horn.mp3', 'fart.mp3'], // TOOT! sound
+      celebrate: ['crowd-ooooh.mp3', 'crowd-aaaah.mp3'], // victory cheers
+      wave: ['wave.mp3'], // gentle wave sound
+      streak: ['streak.mp3'], // trail sound
+      gas: ['gas-cloud.mp3'], // gas cloud effect
+    },
+  },
+  _streakTrail: [],
+  _fartTrail: [],
+  _particles: [],
+  _streakSound: null,
+  _fartSound: null,
+  _celebrateSound: null,
+  _waveSound: null,
+  _streakTimer: null,
+  _fartTimer: null,
+  _particleTimer: null,
+  _celebrateTimer: null,
+  _waveTimer: null,
+  _thinkingTimer: null,
+  _sadTimer: null,
+  _sleepTimer: null,
+  _surprisedTimer: null,
+  _streakActive: false,
+  _fartActive: false,
+  _particlesActive: false,
+  _celebrateActive: false,
+  _waveActive: false,
+  _thinkingActive: false,
+  _sadActive: false,
+  _sleepActive: false,
+  _surprisedActive: false,
+
+  // commentator stays longer + bigger text
   commentator: true,
   commentLines: {
     stock: [ // she draws from the stock
@@ -1552,7 +1822,243 @@ const CUSTOM = {
 };
 /* ================ end of Jason's workshop ================= */
 
-/* UI: events, themes, settings, sound, stats — owns an engine + renderer. */
+/* ---------- Familiar system ---------- */
+const FAMILIAR_NAMES = { poop:'Poop' };
+const FAMILIAR_XP = { poop:0 };
+const FAMILIAR_LVL = { poop:1 };
+const XP_PER_LVL = 100;
+
+class Familiar {
+  constructor(){
+    this.unlocked=store.get('fam_unlocked',[]);
+    this.equipped=store.get('fam_equipped',null);
+    this.xp=store.get('fam_xp',{poop:0});
+    this.lvl=store.get('fam_lvl',{poop:1});
+    this.firstWin=store.get('fam_firstWin',true);
+    this._bar=null;
+    this._poopDrops=[];
+  }
+  save(){
+    store.set('fam_unlocked',this.unlocked);
+    store.set('fam_equipped',this.equipped);
+    store.set('fam_xp',this.xp);
+    store.set('fam_lvl',this.lvl);
+    store.set('fam_firstWin',this.firstWin);
+  }
+  earnXP(amount){
+    if(!this.equipped) return;
+    const f=this.equipped;
+    this.xp[f]=(this.xp[f]||0)+amount;
+    while(this.xp[f]>=(this.lvl[f]||1)*XP_PER_LVL){
+      this.xp[f]-=(this.lvl[f]||1)*XP_PER_LVL;
+      this.lvl[f]=(this.lvl[f]||1)+1;
+      if(ui) ui.say(FAMILIAR_NAMES[f]+' leveled up to Lv.'+this.lvl[f]+'! 🎉');
+    }
+    this.save(); this.renderBar();
+  }
+  equip(name){
+    if(!this.unlocked.includes(name)) return;
+    this.equipped=name; this.save(); this.renderBar();
+    if(ui) ui.say(FAMILIAR_NAMES[name]+' is ready to play!');
+  }
+  unlockPoop(){
+    if(this.unlocked.includes('poop')) return;
+    this.unlocked.push('poop');
+    this.equipped='poop'; // "Happy Crappy!!" — she gets it whether she wants it or not
+    this.save(); this.renderBar();
+    if(ui){
+      ui.say('Happy Crappy!! 💩 It followed you home...');
+      ui.say('Man, I feel like crap!');
+      // show the arrival animation with dialogue bubbles
+      this._arrivalAnimation();
+    }
+  }
+  _arrivalAnimation(){
+    const board=$('#board'); if(!board) return;
+    const sprite=document.createElement('div'); sprite.className='familiar';
+    sprite.innerHTML='<svg viewBox="0 0 32 32" width="48" height="48">'+
+      '<ellipse cx="16" cy="20" rx="12" ry="10" fill="#c8a840" stroke="#5a4010" stroke-width="1.5"/>'+
+      '<ellipse cx="11" cy="12" rx="4" ry="2" fill="rgba(255,255,255,0.3)" transform="rotate(-15 11 12)"/>'+
+      '<circle cx="14" cy="14" r="2" fill="#333"/><circle cx="20" cy="14" r="2" fill="#333"/>'+
+      '<circle cx="15" cy="13" r="0.8" fill="#fff"/><circle cx="21" cy="13" r="0.8" fill="#fff"/>'+
+      '<path d="M13 18 Q16 21 19 18" fill="none" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>'+
+      '<circle cx="11" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>'+
+      '<circle cx="21" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>'+
+      '<rect x="10" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>'+
+      '<rect x="19" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>'+
+      '</svg>';
+    sprite.style.position='absolute';
+    sprite.style.left='50%';
+    sprite.style.top='-100px';
+    sprite.style.zIndex='65';
+    sprite.style.transform='scale(0.8)';
+    board.appendChild(sprite);
+
+    // Animation sequence
+    sprite.style.transition='transform .8s cubic-bezier(.2,.8,.3,1.1), opacity .6s';
+    sprite.style.transform='scale(1) translateY(0)';
+    sprite.style.opacity='1';
+
+    // Dialogue bubbles
+    const bubble1=document.createElement('div');
+    bubble1.className='poop-bubble';
+    bubble1.style.position='absolute';
+    bubble1.style.left='50%';
+    bubble1.style.top='-50px';
+    bubble1.style.fontSize='18px';
+    bubble1.style.fontFamily='Georgia,serif';
+    bubble1.style.color='#ffe699';
+    bubble1.style.textShadow='0 2px 4px rgba(0,0,0,.6)';
+    bubble1.style.backgroundColor='rgba(0,0,0,.7)';
+    bubble1.style.padding='8px 12px';
+    bubble1.style.borderRadius='12px';
+    bubble1.style.borderLeft='4px solid #ffd75e';
+    bubble1.textContent='HELLO LAURA!';
+    board.appendChild(bubble1);
+
+    const bubble2=document.createElement('div');
+    bubble2.className='poop-bubble';
+    bubble2.style.position='absolute';
+    bubble2.style.left='50%';
+    bubble2.style.top='-20px';
+    bubble2.style.fontSize='16px';
+    bubble2.style.fontFamily='Georgia,serif';
+    bubble2.style.color='#ffe699';
+    bubble2.style.textShadow='0 2px 4px rgba(0,0,0,.6)';
+    bubble2.style.backgroundColor='rgba(0,0,0,.7)';
+    bubble2.style.padding='8px 12px';
+    bubble2.style.borderRadius='12px';
+    bubble2.style.borderLeft='4px solid #ffd75e';
+    bubble2.textContent='CAN WE BE BEST FRIENDS?!';
+    board.appendChild(bubble2);
+
+    const bubble3=document.createElement('div');
+    bubble3.className='poop-bubble';
+    bubble3.style.position='absolute';
+    bubble3.style.left='50%';
+    bubble3.style.top='10px';
+    bubble3.style.fontSize='24px';
+    bubble3.style.fontFamily='Georgia,serif';
+    bubble3.style.color='#ffe699';
+    bubble3.style.textShadow='0 2px 4px rgba(0,0,0,.6)';
+    bubble3.style.backgroundColor='rgba(0,0,0,.7)';
+    bubble3.style.padding='8px 12px';
+    bubble3.style.borderRadius='12px';
+    bubble3.style.borderLeft='4px solid #ffd75e';
+    bubble3.textContent='I LOVE YOUUUUUUU!';
+    board.appendChild(bubble3);
+
+    // Wave animation
+    setTimeout(()=>{
+      sprite.style.animation='poopWave 1.5s ease-in-out forwards';
+      setTimeout(()=>{
+        // Poop now follows her around
+        this._crashPoop();
+        // Remove bubbles after animation
+        setTimeout(()=>{
+          bubble1.remove(); bubble2.remove(); bubble3.remove();
+        }, 2000);
+      }, 1500);
+    }, 500);
+  }
+  _crashPoop(){
+    // Nimbus-style crash → vacuum → deal → leave, but poop version
+    const board=$('#board'); if(!board) return;
+    const sprite=document.createElement('div'); sprite.className='familiar';
+    sprite.innerHTML='<svg viewBox="0 0 32 32" width="48" height="48">'+
+      '<ellipse cx="16" cy="20" rx="12" ry="10" fill="#c8a840" stroke="#5a4010" stroke-width="1.5"/>'+
+      '<ellipse cx="11" cy="12" rx="4" ry="2" fill="rgba(255,255,255,0.3)" transform="rotate(-15 11 12)"/>'+
+      '<circle cx="14" cy="14" r="2" fill="#333"/><circle cx="20" cy="14" r="2" fill="#333"/>'+
+      '<circle cx="15" cy="13" r="0.8" fill="#fff"/><circle cx="21" cy="13" r="0.8" fill="#fff"/>'+
+      '<path d="M13 18 Q16 21 19 18" fill="none" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>'+
+      '<circle cx="11" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>'+
+      '<circle cx="21" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>'+
+      '<rect x="10" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>'+
+      '<rect x="19" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>'+
+      '</svg>';
+    sprite.style.left=(30+Math.random()*40)+'%';
+    sprite.style.top='-60px';
+    sprite.style.zIndex='65';
+    board.appendChild(sprite);
+    // crash down
+    sprite.style.transition='transform .6s cubic-bezier(.2,.8,.3,1.1), opacity .4s';
+    sprite.style.transform='translateY(0) rotate(-10deg) scale(1.2)';
+    sprite.style.opacity='1';
+    setTimeout(()=>{
+      // vacuum suck toward center
+      sprite.style.transition='transform .8s ease-in, opacity .5s';
+      sprite.style.transform='translateY(20px) scale(.7)';
+      sprite.style.opacity='.7';
+    },600);
+    setTimeout(()=>{
+      // deal cards away, poop stays
+      sprite.style.transition='transform .4s ease-out';
+      sprite.style.transform='translateY(0) scale(1) rotate(5deg)';
+      sprite.style.opacity='1';
+      // leave little poop marks
+      this._dropPoop();
+    },1400);
+    setTimeout(()=>{
+      // float away
+      sprite.style.transition='transform 1.5s ease-in, opacity 1s';
+      sprite.style.transform='translateY(-40px) scale(.5)';
+      sprite.style.opacity='0';
+      setTimeout(()=>sprite.remove(),1500);
+    },3000);
+  }
+  _dropPoop(){
+    // leave 1-3 little poop marks on the table
+    const board=$('#board'); if(!board) return;
+    const count=1+((Math.random()*2)|0);
+    for(let i=0;i<count;i++){
+      const drop=document.createElement('div');
+      drop.style.position='absolute';
+      drop.style.left=(10+Math.random()*80)+'%';
+      drop.style.top=(40+Math.random()*40)+'%';
+      drop.style.fontSize=(14+Math.random()*10)+'px';
+      drop.style.zIndex='5';
+      drop.style.opacity='.6';
+      drop.style.pointerEvents='none';
+      drop.textContent='💩';
+      board.appendChild(drop);
+      this._poopDrops.push(drop);
+      // fade out after a while
+      setTimeout(()=>{
+        drop.style.transition='opacity .8s';
+        drop.style.opacity='0';
+        setTimeout(()=>drop.remove(),800);
+      },8000+Math.random()*4000);
+    }
+  }
+  renderBar(){
+    const wrap=$('#famWrap'); if(!wrap) return;
+    const bar=$('#famBar'); if(!bar) return;
+    bar.innerHTML='';
+    this.unlocked.forEach(n=>{
+      const d=document.createElement('div');
+      d.className='fam-item'+(this.equipped===n?' equipped':'');
+      d.innerHTML='<img src="assets/familiars/'+n+'-idle.png" alt="" width="28" height="28"><span class="fam-name">'+FAMILIAR_NAMES[n]+'</span><span class="fam-lvl">Lv.'+(this.lvl[n]||1)+'</span>';
+      d.onclick=()=>this.equip(n);
+      bar.appendChild(d);
+    });
+    bar.classList.toggle('show',this.equipped!==null);
+  }
+  initUI(){
+    const wrap=document.createElement('div'); wrap.id='famWrap';
+    const btn=document.createElement('button'); btn.id='bFam'; btn.textContent='🐾'; btn.title='Familiar'; btn.setAttribute('aria-label','Familiar');
+    btn.onclick=()=>{ $('#famBar').classList.toggle('show'); };
+    wrap.appendChild(btn);
+    const bar=document.createElement('div'); bar.id='famBar'; bar.className='';
+    wrap.appendChild(bar);
+    const lbl=document.createElement('div'); lbl.className='fam-label'; lbl.textContent='Pet'; wrap.appendChild(lbl);
+    document.body.appendChild(wrap);
+    this.renderBar();
+  }
+}
+
+const fam = new Familiar();
+
+/* UI: events, themes, sound, stats — owns an engine + renderer. */
 class UI {
   constructor(){
     this.eng=new GameEngine(KLONDIKE);
@@ -1578,6 +2084,7 @@ class UI {
     this.drag=null;
     this.bigCards=store.get('bigCards',false);
     this.applyTheme(); this.applyName(); this.applyDesign(); this.applyBigCards();
+    fam.initUI();
     this.wire();
     this.lastSwap=0;
     this.newGame(false);
@@ -1621,7 +2128,13 @@ class UI {
     this.eng.history=[];
     this.messy=true; this.messFlying=false; this._flew=false;
     this.view.selected=null; this.view.hintCard=null;
-    this.won=false; this.startTime=null; this.stopTimer();
+    this.won=false;
+    // first-win gift: Happy Crappy!!
+    if(fam.firstWin&&!fam.unlocked.includes('poop')){
+      fam.firstWin=false; store.set('fam_firstWin',false);
+      fam.unlockPoop();
+    }
+    this.startTime=null; this.stopTimer();
     $('#winoverlay').classList.remove('show');
     this.view.render(this); this.updateStats();
     // scatter 52 face-down cards all over the table. nothing happens.
@@ -1715,13 +2228,71 @@ class UI {
   say(msg){ $('#announcer').textContent=msg; const hb=$('#hintbar');
     hb.classList.remove('whisper');
     if(msg){ hb.textContent=msg; hb.style.display='block';
-      clearTimeout(this._hbT); this._hbT=setTimeout(()=>hb.style.display='none',2600); } }
+      clearTimeout(this._hbT); this._hbT=setTimeout(()=>hb.style.display='none',5000); } }
   // hushed golf commentator — same bar, different voice
   whisper(msg){
     $('#announcer').textContent=msg;
     const hb=$('#hintbar'); hb.classList.add('whisper');
     hb.textContent='🎙️ '+msg; hb.style.display='block';
-    clearTimeout(this._hbT); this._hbT=setTimeout(()=>{ hb.style.display='none'; hb.classList.remove('whisper'); },2600);
+    clearTimeout(this._hbT); this._hbT=setTimeout(()=>{ hb.style.display='none'; hb.classList.remove('whisper'); },5000);
+  }
+  // ---------- Happy Crappy: the poop-emoji familiar ----------
+  poopArrived(){ return !!store.get('poop_arrived', false); }
+  poopEnsure(){
+    let el=$('#poopbuddy');
+    if(!el){
+      el=document.createElement('div'); el.id='poopbuddy'; el.className='poop-buddy'; el.style.display='none';
+      const img=document.createElement('img'); img.alt='Poop familiar';
+      img.dataset.face='idle'; img.src='assets/familiars/poop-idle.png';
+      el.appendChild(img); document.body.appendChild(el);
+    }
+    return el;
+  }
+  // swap the buddy's face: idle|wave|celebrate|victory|surprised|sad|sleep|thinking
+  poopFace(state){
+    const buddy=this.poopEnsure();
+    const img=buddy.querySelector('img');
+    if(img&&img.dataset.face!==state){ img.dataset.face=state; img.src='assets/familiars/poop-'+state+'.png'; }
+    return buddy;
+  }
+  poopSay(text, ms){
+    const buddy=this.poopEnsure(); buddy.style.display='block';
+    let b=$('#poopbubble');
+    if(!b){ b=document.createElement('div'); b.id='poopbubble'; b.className='poop-bubble'; document.body.appendChild(b); }
+    b.textContent=text; b.classList.add('show');
+    clearTimeout(this._poopT); this._poopT=setTimeout(()=>b.classList.remove('show'), ms||2200);
+  }
+  unlockPoop(){
+    if(this.poopArrived()) return;
+    store.set('poop_arrived', true);
+    // sync the Familiar pet system so the pet bar shows Poop equipped (single arrival, no doubles)
+    try{
+      if(typeof fam!=='undefined'&&fam){
+        if(!fam.unlocked.includes('poop')) fam.unlocked.push('poop');
+        fam.equipped='poop'; fam.firstWin=false; fam.save(); fam.renderBar();
+      }
+    }catch(e){}
+    const name=(this.playerName||'Mom').toUpperCase();
+    const lines=['HELLO '+name+'!','CAN WE BEST FRIENDS?!','I LOVE YOUUUUUU!!','Man, I feel like crap!'];
+    // unlock splash, then the wave-hello arrival
+    let sp=$('#poopsplash');
+    if(!sp){ sp=document.createElement('div'); sp.id='poopsplash'; sp.className='poop-splash'; sp.innerHTML='<span>What a piece of shit.</span>'; document.body.appendChild(sp); }
+    setTimeout(()=>{ sp.classList.add('show'); setTimeout(()=>sp.classList.remove('show'), 2100); }, 1100);
+    setTimeout(()=>{
+      const buddy=this.poopFace('wave'); buddy.style.display='block';
+      lines.forEach((ln,i)=> setTimeout(()=>{ this.poopFace(i===0?'wave':'idle'); this.poopSay(ln, 2000); }, i*2300));
+      setTimeout(()=>this.poopFace('idle'), lines.length*2300+500);
+    }, 2500);
+  }
+  poopReact(){
+    if(this.won||this._finishing||!this.poopArrived()) return;
+    if(Math.random()>=0.25) return;
+    const faces=['surprised','thinking','idle','surprised','thinking'];
+    const buddy=this.poopFace(faces[(Math.random()*faces.length)|0]); buddy.style.display='block';
+    buddy.classList.remove('react'); void buddy.offsetWidth; buddy.classList.add('react');
+    const lines=['Wow, great move!','Hmm, interesting...','Yes!','Ooh, I like that one!','Smooth! ...for a human.','Did you SEE that?!'];
+    this.whisper('\u{1F4A9} '+lines[(Math.random()*lines.length)|0]);
+    clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 3200);
   }
   commentate(kind, card){
     if(!CUSTOM.commentator) return;
@@ -1775,6 +2346,32 @@ class UI {
   }
   afterMove(msg){
     this.ensureTimer(); this.view.render(this); this.updateStats();
+
+    // Familiar spontaneous reactions
+    if(fam.equipped && Math.random() < 0.25) {
+      const f = fam.equipped;
+      const anims = (CUSTOM.animations||{})[f];
+      const sounds = (CUSTOM.sounds||{})[f];
+      if(anims && sounds) {
+        const sprite = document.querySelector(".familiar");
+        if(sprite) {
+          const reactions = [
+            {anim: "happy", text: "Wow, great move!", sound: "happy"},
+            {anim: "wave", text: "Nice!", sound: "wave"},
+            {anim: "thinking", text: "Hmm, interesting...", sound: "thinking"},
+            {anim: "celebrate", text: "Yes!", sound: "celebrate"},
+            {anim: "surprised", text: "Whoa!", sound: "squeak"}
+          ];
+          const reaction = reactions[Math.floor(Math.random() * reactions.length)];
+          sprite.style.animation = (anims[reaction.anim] || "famBounce") + " 1s ease-in-out";
+          const sfxArr = sounds[reaction.sound] || sounds["plop"];
+          if(sfxArr) Sfx.play(sfxArr[Math.floor(Math.random()*sfxArr.length)]);
+          if(ui) ui.whisper(FAMILIAR_NAMES[f] + " says: " + reaction.text);
+          setTimeout(() => { if(sprite) sprite.style.animation = ""; }, 1000);
+        }
+      }
+    }
+
     const flips=this.eng.state.lastFlips||[]; this.eng.state.lastFlips=[];
     if(flips.some(c=>c.suit==='spades'&&c.rank===1)) Vox.play('ace'); // ♠ ace turned over
     if(!this._kingHeartsPlayed&&flips.some(c=>c.suit==='hearts'&&c.rank===13)){ this._kingHeartsPlayed=true; Vox.play('kingHearts'); } // 👑 first K♥ flip
@@ -1783,6 +2380,7 @@ class UI {
     // everything's free and the win is guaranteed: flash-forward to the finish
     else if(!this._finishing&&this.eng.canAutoComplete()){ this._finishing=true;
       this.say('All free \u2014 finishing it off! \u2728'); setTimeout(()=>this.autoLoop(),650); }
+    this.poopReact(); // Happy Crappy 25% spontaneous reaction
   }
   onWin(){
     if(this.won) return; this.won=true; this.stopTimer(); clearTimeout(this._updT);
@@ -1803,6 +2401,10 @@ class UI {
     }
 
     Sfx.win(); Vox.play('win'); this.winShow();
+    // photo slideshow during win
+    this.photoShow();
+    this.unlockPoop(); // Happy Crappy arrives (first win ever; self-gated)
+    if(this.poopArrived()){ this.poopFace('celebrate'); clearTimeout(this._poopWinT); this._poopWinT=setTimeout(()=>this.poopFace('idle'), 6000); }
     // bonus video after first win: disabled for now (win shows only)
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
@@ -1848,6 +2450,32 @@ class UI {
     const _ca=Vox.cache&&Vox.cache['conga.mp3']; if(_ca){ try{_ca.pause();}catch(e){} }
     if(typeof March!=='undefined') March.stop();
     const l=document.getElementById('winshow'); if(l) l.remove();
+  }
+  photoShow(){
+    const captions=[
+      'You did it! 🎉',
+      'One for the photo album 📸',
+      'Mom knows best 💛',
+      'Another one bites the dust 🃏',
+      'That was fun! ✨',
+    ];
+    const layer=document.createElement('div'); layer.id='photoShow';
+    layer.setAttribute('aria-hidden','true');
+    document.body.appendChild(layer);
+    let i=0;
+    const show=()=>{
+      if(i>=captions.length){ layer.remove(); return; }
+      layer.innerHTML='<div class="photo-frame" style="background:linear-gradient(135deg,'+
+        ['#ffd966','#c0392b','#2e7d4f','#7b4bb0','#e07040'][i]+','+
+        ['#e07040','#ffd966','#c0392b','#2e7d4f','#7b4bb0'][i]+');"></div>'+
+        '<div class="photo-caption">'+captions[i]+'</div>';
+      i++;
+      setTimeout(show, 3500);
+    };
+    setTimeout(show, 1500);
+    // click to dismiss
+    layer.onclick=()=>layer.remove();
+    setTimeout(()=>{ if(layer.isConnected) layer.remove(); }, 20000);
   }
   /* first win ever: big unlock text, then the bonus video streams in on demand (never bundled) */
   bonusVideo(){
@@ -2282,6 +2910,13 @@ class UI {
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
         $('#bMusic').textContent='Music off'; $('#bMusic').setAttribute('aria-pressed', 'false'); });
       else Radio.stop(); };
+    // Random theme: cycle to a random table
+    $('#bRandom').onclick=()=>{
+      const felts=Object.keys(TABLES).filter(k=>!TABLES[k].scene);
+      let next; do{ next=felts[(Math.random()*felts.length)|0]; } while(next===this.theme&&felts.length>1);
+      this.theme=next; this.lastFelt=this.theme; store.set('theme',this.theme); store.set('lastFelt',this.lastFelt);
+      this.applyTheme(); this.view.render(this); Sfx.click(); this.say('Theme: '+this.theme+'!');
+    };
     // horoscope scroll: bottom-left corner
     $('#bScope').onclick=()=>Scope.open();
     $('#scopePop .scope-close').onclick=()=>Scope.close();
@@ -2627,6 +3262,7 @@ class UI {
       document.body.classList.remove('deep-sleep');
       Sfx.fanfare();
       this.say("Yawn... I'm awake! 😴✨");
+      if(this.poopArrived()) this.poopFace('idle');
     }
     this.clearSurprises();
     this.idleT = setTimeout(()=>this.onIdle(), CUSTOM.idleSec*1000);
@@ -2664,6 +3300,7 @@ class UI {
       document.body.classList.add('deep-sleep');
       Sfx.lullaby();
       this.say("The table fell fast asleep... 😴💤");
+      if(this.poopArrived()){ this.poopFace('sleep'); setTimeout(()=>this.poopSay("I'm pooped out...", 2600), 1200); } // Happy Crappy nap
     }
     if(this.idleStage>=2) {
       this.pickSurprise(true);
