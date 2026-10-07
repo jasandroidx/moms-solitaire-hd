@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Word Whomp — Mom's Bugs</title>
+<style>
+:root{--bg:#2d5016;--fg:#fff8e7;--accent:#ff6b35;--gold:#ffd700;--crap:#7a6e5d;--portal:#4a3728;--glass:rgba(255,248,231,0.12);--pulse:#ff4444}
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;background:#000;color:var(--fg)}
+#game{width:100%;height:100%;position:relative;overflow:hidden}
+canvas#bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
+#ui{position:absolute;top:0;left:0;width:100%;height:100%;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 12px 16px;pointer-events:none}
+#ui>*{pointer-events:auto}
+.hdr{width:100%;display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0}
+.stat{background:var(--glass);backdrop-filter:blur(6px);border-radius:10px;padding:6px 12px;text-align:center;min-width:60px;border:1px solid rgba(255,255,255,0.1)}
+.stat .lbl{font-size:10px;opacity:.6;text-transform:uppercase;letter-spacing:1px}
+.stat .val{font-size:22px;font-weight:800;color:var(--gold)}
+.stat .val.warn{color:var(--pulse);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{transform:scale(1.15);opacity:.7}}
+.timer .val{font-size:26px}
+.bug-row{display:flex;align-items:center;justify-content:center;gap:6px;width:100%}
+.bug{width:64px;height:64px;position:relative;cursor:pointer;transition:transform .12s}
+.bug.tapped{transform:scale(1.2) translateY(-4px)}
+.bug canvas{width:64px;height:64px;display:block}
+.tiles{display:flex;gap:8px;justify-content:center;align-items:center;padding:8px 0}
+.tile{width:48px;height:56px;background:linear-gradient(180deg,#f5e6c8 0%,#dcc896 100%);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#333;box-shadow:0 4px 0 #b8a070,0 6px 12px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s,box-shadow .15s;position:relative;border:2px solid transparent}
+.tile.selected{transform:translateY(-12px);box-shadow:0 8px 0 #b8a070,0 12px 20px rgba(0,0,0,.4);border-color:var(--accent);background:linear-gradient(180deg,#ffe4a0,#f5d080)}
+.tile.golden{background:linear-gradient(180deg,#ffd700,#ff8c00);animation:goldpulse 1s infinite alternate;box-shadow:0 4px 0 #b8860b,0 0 20px rgba(255,215,0,.5)}
+@keyframes goldpulse{to{box-shadow:0 4px 0 #b8860b,0 0 30px rgba(255,215,0,.8)}}
+.tile .glow{position:absolute;inset:-4px;border-radius:12px;border:3px solid transparent;pointer-events:none}
+.tile.selected .glow{border-color:rgba(255,107,53,.6)}
+.btn{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:12px 28px;font-size:18px;font-weight:800;box-shadow:0 4px 0 #b83a00;cursor:pointer;letter-spacing:1px;text-transform:uppercase}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 #b83a00}
+.btn.jumble{background:#6a5acd;box-shadow:0 4px 0 #4a3a9d}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn.sm{font-size:14px;padding:8px 16px;border-radius:8px}
+.action-bar{display:flex;gap:10px;align-items:center}
+.words-box{width:100%;max-height:72px;overflow-y:auto;background:var(--glass);backdrop-filter:blur(4px);border-radius:10px;padding:6px 10px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;scrollbar-width:thin}
+.word-chip{background:rgba(255,215,0,.2);border:1px solid rgba(255,215,0,.3);border-radius:6px;padding:2px 8px;font-size:13px;font-weight:600;color:var(--gold)}
+.word-chip.secret{background:rgba(255,107,53,.3);border-color:var(--accent);color:#fff}
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}
+.modal.hidden{display:none}
+.modal-box{background:linear-gradient(180deg,#4a3728,#2d1f14);border:3px solid #8b6914;border-radius:20px;padding:24px;text-align:center;max-width:340px;width:85%;box-shadow:0 0 40px rgba(0,0,0,.6)}
+.modal-box h2{color:var(--gold);font-size:24px;margin-bottom:12px;text-shadow:0 2px 4px rgba(0,0,0,.5)}
+.modal-box p{font-size:15px;line-height:1.5;margin-bottom:8px}
+.modal-box .secret-list{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0}
+.modal-box .secret-tag{background:rgba(255,107,53,.3);border:1px solid var(--accent);border-radius:8px;padding:4px 12px;font-weight:700;color:#fff;font-size:14px}
+.modal-box .btn{margin-top:12px}
+.diff-select{display:flex;gap:8px;margin:12px 0}
+.diff-btn{padding:10px 20px;border-radius:10px;border:2px solid rgba(255,255,255,.2);background:var(--glass);color:var(--fg);font-weight:700;cursor:pointer;font-size:14px}
+.diff-btn.active{border-color:var(--gold);background:rgba(255,215,0,.2);color:var(--gold)}
+#spotlight{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(0,0,0,.85);border:3px solid var(--gold);border-radius:16px;padding:16px 28px;text-align:center;z-index:50;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
+#spotlight.show{transform:translate(-50%,-50%) scale(1)}
+#spotlight .sw{font-size:36px;font-weight:900;color:var(--gold)}
+#spotlight .sl{font-size:13px;opacity:.7;margin-top:4px}
+#garden{position:absolute;bottom:0;left:0;width:100%;height:60px;z-index:0;pointer-events:none}
+#toast{position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,.8);color:var(--gold);padding:12px 24px;border-radius:12px;font-weight:700;font-size:20px;z-index:200;opacity:0;transition:opacity .3s;pointer-events:none}
+#toast.show{opacity:1}
+.candy{position:absolute;pointer-events:none;z-index:60;font-size:24px;animation:floatUp 1.5s ease-out forwards}
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(1.5)}}
+</style>
+</head>
+<body>
+<div id="game">
+  <canvas id="bg"></canvas>
+  <canvas id="garden"></canvas>
+  <div id="ui">
+    <div class="hdr">
+      <div class="stat"><div class="lbl">Score</div><div class="val" id="sScore">0</div></div>
+      <div class="stat timer"><div class="lbl">Time</div><div class="val" id="sTimer">2:20</div></div>
+      <div class="stat"><div class="lbl">Found</div><div class="val" id="sFound">0</div></div>
+    </div>
+    <div class="bug-row" id="bugRow"></div>
+    <div class="tiles" id="tiles"></div>
+    <div class="action-bar">
+      <button class="btn jumble" id="btnJumble">JUMBLE</button>
+      <button class="btn" id="btnSubmit">SUBMIT</button>
+    </div>
+    <div class="words-box" id="wordsBox"></div>
+  </div>
+  <div id="spotlight"><div class="sw" id="swText"></div><div class="sl" id="slLabel"></div></div>
+  <div id="toast"></div>
+  <div class="modal hidden" id="startModal">
+    <div class="modal-box">
+      <h2>🪲 Word Whomp!</h2>
+      <p>Tap letters, build words, find them all before time runs out!</p>
+      <div class="diff-select" id="diffSelect">
+        <button class="diff-btn" data-diff="easy">Easy</button>
+        <button class="diff-btn active" data-diff="medium">Medium</button>
+        <button class="diff-btn" data-diff="hard">Hard</button>
+      </div>
+      <button class="btn" id="btnStart">START</button>
+    </div>
+  </div>
+  <div class="modal hidden" id="endModal">
+    <div class="modal-box">
+      <h2 id="endTitle">Time's Up!</h2>
+      <p id="endScore">Score: 0</p>
+      <p id="endWords">Found: 0 words</p>
+      <p id="endPct">Completed: 0%</p>
+      <div id="endSecrets" class="secret-list"></div>
+      <button class="btn" id="btnRestart">PLAY AGAIN</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== LETTER SETS =====
+const LETTER_SETS_RAW=[
+{letters:"OUFRDR",words:["for","ford","four","fur","rod","roud","our","ord","duo","duro","durr","dour","frond","rouder","fords","fourer"]},
+{letters:"EOAWKF",words:["awe","oak","oaf","owe","woe","fake","owe","woke","weak","awake","wake","woke","woke","kawe","koae"]},
+{letters:"AOGYTG",words:["ago","gag","gat","gay","got","toy","tag","toga","goog","gyro","yoga","goat","goya","tao","yag","yat","gay","got"]},
+{letters:"UMIBEL",words:["bile","bulk","bike","mile","bulk","bulb","bile","mile","mull","bulb","bike","bile","mile"]},
+{letters:"TNEESW",words:["web","wet","teen","ween","seen","seen","sewn","west","nest","sent","tent","went","teens","twens","news","dew","new"]},
+{letters:"RODLAN",words:["land","lord","rod","lane","loan","lard","round","land","lord","rod","lane","loan","lard","lord","round","land"]},
+{letters:"EHSTOA",words:["hot","hat","eat","tea","ate","east","hose","haste","heat","oath","teah","hote","hoast","tea","eat","hat","hot","toe","toe"]},
+{letters:"RIVENS",words:["vies","vine","rive","rive","rive","rive","rive","rive","rive","rive","rive","rive","rive"]},
+{letters:"CTAIRE",words:["ice","ace","tar","car","cat","rat","tea","eat","crate","cider","trace","cart","rate","acre"]},
+{letters:"DNOESW",words:["done","news","dose","send","swan","sown","dew","new","dos","son","own","den","end","won","dew"]},
+{letters:"HIELPV",words:["veil","live","evil","hive","pile","lipe","hype","help","heli","vile","live","evil","hive"]},
+{letters:"KNOTSA",words:["note","sank","knot","tank","skin","skat","atone","nota","kats","tanka","stoak"]},
+{letters:"FLARED",words:["lare","fare","fled","dare","dale","flea","fla","fed","lad","fled","flared","dare"]},
+{letters:"BORGLE",words:["gore","bare","bare","bare","bare","bare","bare","bare","bare","bare","bare","bare"]},
+{letters:"YNUITP",words:["pin","pun","tip","tin","nip","twin","unit","pint","punt","tiup"]},
+{letters:"CMOARY",words:["corm","carry","macro","comay","comay","comay","comay","comay","comay","comay"]},
+{letters:"WONDEY",words:["wye","dew","end","won","dey","new","yond","wood","wane","wone"]},
+{letters:"SULTRA",words:["sultra","ultra","lurst","lura","sula","rust","lust","ruta","sult","slant"]},
+{letters:"BINTED",words:["bite","bend","tent","bin","dint","bed","bid","ben","bet","nite","bite","bine","dine"]},
+{letters:"GLOBER",words:["globe","ogle","gore","blob","robe","blew","glop","bogle","globe"]},
+{letters:"FANTRY",words:["fart","rant","ranty","tray","fray","tarn","rya","tray","fart","rant"]}
+];
+// Fill to 300
+while(LETTER_SETS_RAW.length<300){
+  const pl="ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");const l=[];
+  for(let i=0;i<6;i++)l.push(pl.splice(Math.floor(Math.random()*pl.length),1)[0]);
+  LETTER_SETS_RAW.push({letters:l.join(""),words:["todo"]});
+}
+const LETTER_SETS=LETTER_SETS_RAW;
+
+const COMMON_3=new Set(["ace","act","add","ado","aid","ail","air","ale","all","amp","ant","any","ape","apt","arc","are","ark","arm","art","ash","ask","ate","awe","axe","aye","bad","bag","ban","bar","bat","bay","bed","bee","beg","bet","bid","big","bin","bit","boa","bob","bod","bow","box","boy","bra","bud","bug","bun","bus","but","buy","bye","cab","cad","cam","can","cap","car","cat","caw","cod","cog","col","con","coo","cop","cot","cow","coy","cry","cub","cue","cup","cur","cute","cut","dad","dam","dan","day","den","did","die","dig","dim","din","dip","doe","dog","dol","don","dot","dry","dug","dub","dud","due","dug","dun","duo","dye","ear","eat","eau","ebb","edit","egg","ego","elm","end","era","ewe","eye","fad","fag","fan","far","fat","fax","fed","fee","fell","felt","fen","few","fib","fig","fin","fir","fit","fix","flea","flew","fly","fog","foe","fog","fop","for","fox","fray","fri","fuel","fur","gab","gag","gal","gap","gas","gay","gel","gem","get","gig","god","got","gum","gun","gut","guy","gym","gyp","hat","hay","hem","hen","her","hew","hid","him","hip","his","hit","hoe","hog","hop","hot","how","hub","hue","hug","hum","hut","ice","icy","ill","imp","ink","inn","ion","ire","irk","ivy","jab","jac","jag","jam","jar","jaw","jay","jet","jew","jib","jig","job","jog","joy","jug","jut","keg","ken","key","kid","kin","kit","lab","lad","lag","lam","lap","law","lax","lay","led","leg","leg","let","lid","lie","lip","lit","lob","log","lot","low","mad","mag","man","map","mar","mas","mat","maw","max","may","men","met","mew","mid","mil","mix","mob","mod","mop","mow","mud","mug","mum","nab","nag","nap","nav","net","new","nil","nip","nit","nix","nod","nor","not","now","nub","nun","nut","oaf","oak","oar","oat","odd","ode","off","oft","oil","old","one","opt","orb","ore","our","out","ova","owe","owl","own","pad","pal","pan","par","pat","paw","pay","pea","peg","pen","pep","per","pet","pew","phi","pic","pie","pig","pin","pit","ply","pod","pol","pop","pot","pow","pro","pry","pub","pug","pun","pup","pur","pus","put","rag","rah","raj","ram","ran","rap","rat","raw","ray","red","ref","rep","rev","rib","rid","rig","rim","rip","rob","rod","rot","row","rub","rug","rum","run","rut","rya","sac","sad","sag","sap","sat","saw","sax","say","sea","set","sew","sex","shy","sin","sip","sir","sis","sit","six","ski","sky","slay","sly","sob","sob","sod","sol","son","sop","sow","soy","spa","spy","sty","sub","sue","sum","sun","sup","tab","tad","tag","tam","tan","tap","tar","tat","tax","tea","ted","tee","ten","the","thy","tic","tie","tin","tip","tire","toad","tod","toe","tom","ton","too","top","tor","tot","tow","toy","try","tub","tug","tun","tut","twa","two","ump","undo","ups","van","vat","vet","vex","via","vie","vow","wad","wag","wan","war","was","wax","way","web","wed","wee","wed","wig","win","wit","wiz","woe","won","woo","wow","wry","yam","yap","yard","yarn","yaw","yea","yen","yep","yes","yet","yew","yin","yip","yon","you","yow","zap","zip","zit","zone","zoo"]);
+
+const DIFFICULTY={easy:{time:140,label:"Easy"},medium:{time:100,label:"Medium"},hard:{time:60,label:"Hard"}};
+const SECRET_WORDS=new Set(["poop","fart","mom","laura","fly","swat","bug"]);
+const GOLDEN_CHANCE=0.08;
+const SPOTLIGHT_CHANCE=0.15;
+
+// ===== GAME STATE =====
+let state={running:false,letters:"",selected:[],found:[],score:0,timeLeft:0,timer:null,difficulty:"medium",goldenLetter:-1,lastWord:"",spotlightUsed:false,bugState:0,walkFrame:0,walkTimer:0};
+
+// ===== AUDIO =====
+let audioCtx;
+function initAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();}
+function tone(f,d,v=.1){if(!audioCtx)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(audioCtx.currentTime+d);}
+function sfxSelect(){tone(660,.08,.1);tone(880,.08,.08);}
+function sfxSubmit(){tone(440,.15,.15);setTimeout(()=>tone(660,.15,.15),100);setTimeout(()=>tone(880,.2,.12),200);}
+function sfxError(){tone(200,.15,.1);tone(150,.2,.08);}
+function sfxJumble(){tone(300,.06,.08);setTimeout(()=>tone(500,.06,.08),60);setTimeout(()=>tone(700,.06,.08),120);setTimeout(()=>tone(900,.1,.1),180);}
+function sfxSecret(){tone(523,.1,.12);setTimeout(()=>tone(659,.1,.12),100);setTimeout(()=>tone(784,.15,.15),200);setTimeout(()=>tone(1047,.2,.12),300);}
+function sfxGolden(){tone(880,.08,.1);setTimeout(()=>tone(1100,.08,.1),80);setTimeout(()=>tone(1320,.15,.12),160);}
+let music=null;
+function startMusic(){if(music)return;music=new Audio("assets/audio/fly-swatter-laura.mp3");music.loop=true;music.volume=.3;music.play().catch(()=>{});}
+
+// ===== SPRITES =====
+function drawBug(canvas,stateIdx,frameIdx,scale=1,tapped=false){
+  const ctx=canvas.getContext("2d");
+  const w=canvas.width=128*scale,h=canvas.height=128*scale;
+  ctx.clearRect(0,0,w,h);ctx.save();ctx.scale(scale,scale);
+  // Body
+  ctx.fillStyle="#5a4a3a";ctx.beginPath();ctx.ellipse(64,72,32,22,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#6b5b4b";ctx.beginPath();ctx.ellipse(64,68,28,18,0,0,Math.PI*2);ctx.fill();
+  // Wings
+  ctx.fillStyle="#c8a050";ctx.beginPath();ctx.ellipse(48,52,16,10,-.3,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(80,52,16,10,.3,0,Math.PI*2);ctx.fill();
+  // Eyes
+  ctx.fillStyle="#fff";ctx.beginPath();ctx.ellipse(50,58,10,12,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(78,58,10,12,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#222";const ox=tapped?Math.sin(Date.now()/50)*3:0;
+  ctx.beginPath();ctx.arc(50+ox,60,4,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(78+ox,60,4,0,Math.PI*2);ctx.fill();
+  // Angry brows
+  ctx.strokeStyle="#222";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(38,46);ctx.lineTo(48,40);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(80,40);ctx.lineTo(90,46);ctx.stroke();
+  // Antennae
+  ctx.strokeStyle="#5a4a3a";ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(52,42);ctx.quadraticCurveTo(44,28,48,22);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(76,42);ctx.quadraticCurveTo(84,28,80,22);ctx.stroke();
+  ctx.fillStyle="#5a4a3a";ctx.beginPath();ctx.arc(48,22,3,0,Math.PI*2);ctx.fill();ctx.beginPath();ctx.arc(80,22,3,0,Math.PI*2);ctx.fill();
+  // Legs
+  ctx.lineWidth=3;const legSwing=Math.sin(Date.now()/200)*3;
+  ctx.strokeStyle="#5a4a3a";
+  [[30,80,24,95+legSwing],[45,90,40,100+legSwing],[60,92,55,102+legSwing],[68,92,73,102-legSwing],[85,90,90,100-legSwing],[100,80,106,95-legSwing]].forEach(([x1,y1,x2,y2])=>{ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();});
+  // Frown
+  ctx.strokeStyle="#222";ctx.lineWidth=2;ctx.beginPath();ctx.arc(64,82,10,Math.PI*.6,Math.PI*.9);ctx.stroke();
+  ctx.restore();
+}
+
+function drawLetterTile(canvas,letter,isGolden,isSelected,scale=1){
+  const ctx=canvas.getContext("2d");
+  const w=canvas.width=64*scale,h=canvas.height=72*scale;
+  ctx.clearRect(0,0,w,h);ctx.save();ctx.scale(scale,scale);
+  const grad=ctx.createLinearGradient(0,0,0,56);
+  if(isGolden){grad.addColorStop(0,"#ffd700");grad.addColorStop(1,"#ff8c00");}
+  else{grad.addColorStop(0,"#f5e6c8");grad.addColorStop(1,"#dcc896");}
+  ctx.fillStyle=grad;ctx.beginPath();ctx.roundRect(4,4,56,56,8);ctx.fill();
+  ctx.strokeStyle=isSelected?"#ff6b35":'#b8a070';ctx.lineWidth=isSelected?3:2;
+  ctx.beginPath();ctx.roundRect(4,4,56,56,8);ctx.stroke();
+  if(isGolden){ctx.shadowColor="rgba(255,215,0,.6)";ctx.shadowBlur=12;}
+  ctx.fillStyle="#333";ctx.font="bold 28px sans-serif";ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(letter,32,32);ctx.restore();
+}
+
+// ===== RENDERING =====
+function renderBugRow(){
+  const row=document.getElementById("bugRow");row.innerHTML="";
+  for(let i=0;i<6;i++){const c=document.createElement("canvas");c.width=128;c.height=128;c.className="bug";c.dataset.idx=i;drawBug(c,0,i);c.addEventListener("click",()=>tapBug(i));row.appendChild(c);}
+}
+
+function renderTiles(){
+  const box=document.getElementById("tiles");box.innerHTML="";
+  const letters=state.letters.split("");
+  letters.forEach((l,i)=>{const t=document.createElement("canvas");t.width=64;t.height=72;t.className="tile";if(state.selected.includes(i))t.classList.add("selected");if(state.goldenLetter===i)t.classList.add("golden");drawLetterTile(t,l,state.goldenLetter===i,state.selected.includes(i));t.addEventListener("click",()=>tapTile(i));box.appendChild(t);});
+}
+
+function tapTile(idx){initAudio();startMusic();if(!state.running)return;const i=state.selected.indexOf(idx);if(i>=0){state.selected.splice(i,1);sfxSelect();}else{state.selected.push(idx);sfxSelect();}renderTiles();}
+function tapBug(idx){const bugs=document.querySelectorAll(".bug");if(bugs[idx]){bugs[idx].classList.add("tapped");setTimeout(()=>bugs[idx].classList.remove("tapped"),200);}}
+
+function submitWord(){
+  if(!state.running)return;
+  const selected=state.selected;if(selected.length<3){sfxError();return;}
+  const letters=state.letters.split("");const word=selected.map(i=>letters[i]).join("").toLowerCase();
+  const currentSet=LETTER_SETS.find(s=>s.letters===state.letters);
+  const validWords=currentSet?currentSet.words.map(w=>w.toLowerCase()):[];
+  const isSecret=SECRET_WORDS.has(word);
+  const isGolden=state.goldenLetter>=0&&selected.includes(state.goldenLetter);
+  if(!validWords.includes(word)){sfxError();state.selected=[];renderTiles();return;}
+  if(state.found.includes(word)){sfxError();state.selected=[];renderTiles();return;}
+  state.found.push(word);state.selected=[];
+  const pts=word.length<=3?10:word.length===4?20:word.length===5?50:100;
+  const finalPts=isGolden?pts*2:pts;state.score+=finalPts;state.lastWord=word;
+  if(isSecret)sfxSecret();else sfxSubmit();if(isGolden)sfxGolden();
+  updateUI();renderWords();spawnCandy(word,isGolden);
+  if(Math.random()<SPOTLIGHT_CHANCE&&!state.spotlightUsed)showSpotlight(word);
+  if(Math.random()<GOLDEN_CHANCE&&state.goldenLetter<0){state.goldenLetter=Math.floor(Math.random()*6);showToast("✨ GOLDEN BUG! ✨");}
+  if(currentSet&&state.found.length>=currentSet.words.length){winGame();}
+}
+
+function jumble(){if(!state.running)return;sfxJumble();const letters=state.letters.split("");for(let i=letters.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[letters[i],letters[j]]=[letters[j],letters[i]];}state.letters=letters.join("");state.selected=[];renderTiles();}
+
+function updateUI(){
+  document.getElementById("sScore").textContent=state.score;
+  document.getElementById("sFound").textContent=state.found.length;
+  const t=Math.ceil(state.timeLeft);const m=Math.floor(t/60),s=t%60;
+  const timerEl=document.getElementById("sTimer");timerEl.textContent=`${m}:${s.toString().padStart(2,"0")}`;timerEl.classList.toggle("warn",t<30);
+}
+
+function renderWords(){
+  const box=document.getElementById("wordsBox");box.innerHTML=state.found.map(w=>{const cls=SECRET_WORDS.has(w)?"word-chip secret":"word-chip";return`<span class="${cls}">${w.toUpperCase()}</span>`;}).join("");
+}
+
+function showSpotlight(word){state.spotlightUsed=true;const el=document.getElementById("spotlight");document.getElementById("swText").textContent=word.toUpperCase();document.getElementById("slLabel").textContent="Last Word Spotlight!";el.classList.add("show");setTimeout(()=>el.classList.remove("show"),2500);}
+function spawnCandy(word,golden){const game=document.getElementById("game");for(let i=0;i<5;i++){const c=document.createElement("div");c.className="candy";c.textContent=golden?"★":"✦";c.style.left=(30+Math.random()*40)+"%";c.style.top=(40+Math.random()*20)+"%";game.appendChild(c);setTimeout(()=>c.remove(),1500);}}
+function showToast(msg){const t=document.getElementById("toast");t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2000);}
+
+// ===== TIMER =====
+function startTimer(){state.timer=setInterval(()=>{state.timeLeft-=.1;updateUI();if(state.timeLeft<=0){state.timeLeft=0;clearInterval(state.timer);state.running=false;endGame();}},100);}
+
+// ===== FAMILIAR =====
+function loadFamXp(){try{return JSON.parse(localStorage.getItem("fam_xp")||"{}")}catch(e){return{}}}
+function saveFamXp(xp){localStorage.setItem("fam_xp",JSON.stringify(xp))}
+function loadFamLvl(){try{return JSON.parse(localStorage.getItem("fam_lvl")||"{}")}catch(e){return{}}}
+function saveFamLvl(lvl){localStorage.setItem("fam_lvl",JSON.stringify(lvl))}
+function addXP(amt){const xp=loadFamXp();const cur=xp.poop||0;xp.poop=cur+amt;saveFamXp(xp);const lvl=loadFamLvl();const curL=lvl.poop||1;if(xp.poop>=curL*100){lvl.poop=curL+1;saveFamLvl(lvl);showToast(`🪲 Crappy leveled up to ${curL+1}!`);}}
+
+// ===== GARDEN =====
+function drawGarden(){
+  const canvas=document.getElementById("garden");const ctx=canvas.getContext("2d");
+  canvas.width=window.innerWidth;canvas.height=60;ctx.clearRect(0,0,canvas.width,60);
+  const found=state.found.length;
+  for(let i=0;i<Math.min(found,20);i++){const x=(i/20)*canvas.width+canvas.width/40;const y=50-Math.sin(i*1.5)*10;const size=4+i*.5;ctx.fillStyle=i%3===0?"#ff6b6b":i%3===1?"#ffd93d":"#6bcb77";ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.fill();ctx.fillStyle="#3a8c1a";ctx.fillRect(x-1,y,size,8);}
+}
+
+// ===== BACKGROUND =====
+function drawBG(){
+  const canvas=document.getElementById("bg");const ctx=canvas.getContext("2d");
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const grad=ctx.createLinearGradient(0,0,0,canvas.height);grad.addColorStop(0,"#1a3a0a");grad.addColorStop(.5,"#2d5016");grad.addColorStop(1,"#3a2a1a");ctx.fillStyle=grad;ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle="#5a3a1a";ctx.lineWidth=3;const railY=canvas.height*.75;
+  for(let x=0;x<canvas.width;x+=20){ctx.beginPath();ctx.moveTo(x,railY);ctx.lineTo(x,railY-30);ctx.stroke();}
+  ctx.beginPath();ctx.moveTo(0,railY);ctx.lineTo(canvas.width,railY);ctx.stroke();ctx.beginPath();ctx.moveTo(0,railY-30);ctx.lineTo(canvas.width,railY-30);ctx.stroke();
+  ctx.fillStyle="#fff";for(let i=0;i<30;i++){ctx.fillRect(Math.random()*canvas.width,Math.random()*canvas.height*.5,1,1);}
+}
+
+// ===== GAME LOGIC =====
+function startGame(){
+  const diff=DIFFICULTY[state.difficulty];state.timeLeft=diff.time;state.score=0;state.found=[];state.selected=[];state.goldenLetter=-1;state.spotlightUsed=false;state.running=true;state.lastWord="";
+  const setIdx=Math.floor(Math.random()*LETTER_SETS.length);const set=LETTER_SETS[setIdx];state.letters=set.letters;
+  document.getElementById("startModal").classList.add("hidden");document.getElementById("endModal").classList.add("hidden");
+  renderTiles();renderBugRow();updateUI();renderWords();drawBG();startTimer();addXP(10);
+}
+
+function endGame(){
+  state.running=false;clearInterval(state.timer);
+  const currentSet=LETTER_SETS.find(s=>s.letters===state.letters);const total=currentSet?currentSet.words.length:1;const pct=Math.floor(state.found.length/total*100);
+  document.getElementById("endTitle").textContent="Time's Up!";document.getElementById("endScore").textContent=`Score: ${state.score}`;document.getElementById("endWords").textContent=`Found: ${state.found.length} words`;document.getElementById("endPct").textContent=`Completed: ${pct}%`;
+  const secrets=[...state.found.filter(w=>SECRET_WORDS.has(w))];document.getElementById("endSecrets").innerHTML=secrets.map(s=>`<span class="secret-tag">${s.toUpperCase()}</span>`).join("");
+  document.getElementById("endModal").classList.remove("hidden");addXP(5);
+}
+
+function winGame(){state.running=false;clearInterval(state.timer);document.getElementById("endTitle").textContent="🎉 All Words Found!";document.getElementById("endScore").textContent=`Score: ${state.score}`;document.getElementById("endWords").textContent=`Found: ${state.found.length} words`;document.getElementById("endPct").textContent="Completed: 100%";document.getElementById("endModal").classList.remove("hidden");addXP(50);}
+
+// ===== INIT =====
+window.addEventListener("resize",()=>{drawBG();drawGarden();});
+window.addEventListener("load",()=>{drawBG();renderBugRow();
+  document.querySelectorAll(".diff-btn").forEach(b=>{b.addEventListener("click",()=>{document.querySelectorAll(".diff-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");state.difficulty=b.dataset.diff;});});
+  document.getElementById("btnStart").addEventListener("click",startGame);
+  document.getElementById("btnRestart").addEventListener("click",()=>document.getElementById("startModal").classList.remove("hidden"));
+  document.getElementById("btnSubmit").addEventListener("click",submitWord);
+  document.getElementById("btnJumble").addEventListener("click",jumble);
+});
+</script>
+</body>
+</html>
