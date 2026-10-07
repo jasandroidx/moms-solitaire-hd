@@ -436,7 +436,7 @@ header,#board{position:relative;z-index:3;}
 .zzz-bubble{position:absolute;z-index:60;pointer-events:none;font-family:Georgia,serif;font-weight:700;color:#ffd75e;text-shadow:0 2px 4px rgba(0,0,0,0.6);font-size:22px;animation:floatZzz 2.4s ease-out forwards;}
 @keyframes floatZzz{0%{opacity:0;transform:translate(0, 0) scale(0.6);}20%{opacity:1;}100%{opacity:0;transform:translate(18px, -45px) scale(1.3);}}
 /* ---------- Happy Crappy: the poop-emoji familiar ---------- */
-.poop-buddy{position:fixed;right:18px;bottom:64px;z-index:95;width:96px;height:96px;pointer-events:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));animation:poopPop .6s cubic-bezier(.2,1.6,.4,1),poopBob 3s ease-in-out 1s infinite;}
+.poop-buddy{position:fixed;right:18px;bottom:64px;z-index:95;cursor:pointer;pointer-events:auto;width:96px;height:96px;filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));animation:poopPop .6s cubic-bezier(.2,1.6,.4,1),poopBob 3s ease-in-out 1s infinite;}
 .poop-buddy img{width:100%;height:100%;object-fit:contain;display:block;}
 /* unlock splash: "What a piece of shit." */
 .poop-splash{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .45s;}
@@ -465,6 +465,11 @@ header,#board{position:relative;z-index:3;}
 .poop-buddy img{transition:transform .12s;}
 .poop-buddy.blink img{transform:scaleY(.12);}
 .poop-buddy.hop{animation:poopHop .5s ease-in-out,poopBob 3s ease-in-out 1s infinite !important;}
+/* persistent brown spot — stays for the whole hand */
+.poop-stain{position:fixed;z-index:39;pointer-events:none;border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(101,67,33,.5) 0%,rgba(101,67,33,.28) 45%,rgba(101,67,33,0) 72%);
+  animation:stainIn .4s ease-out;}
+@keyframes stainIn{from{transform:scale(.3);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes poopHop{0%,100%{margin-bottom:0;}40%{margin-bottom:26px;}}
 @keyframes poopWiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-14deg) scale(1.08);}50%{transform:rotate(12deg);}75%{transform:rotate(-8deg) scale(1.05);}}
 .poop-bubble{position:fixed;right:96px;bottom:128px;z-index:95;pointer-events:none;background:#fffbe8;color:#4a3418;font-family:Georgia,serif;font-weight:700;font-size:21px;padding:12px 16px;max-width:280px;border-radius:16px;border:2px solid #4a3418;box-shadow:0 4px 12px rgba(0,0,0,.35);opacity:0;transform:scale(.7);transform-origin:bottom right;transition:opacity .8s,transform .5s;}
@@ -2227,6 +2232,7 @@ class UI {
     }
     this.stats.games++; store.set('stats',this.stats);
     this._messAnnounce=announce; this._finishing=false;
+    this.poopClearStains();
     this.enterMessy();
     try{ if(this.poopArrived()){ this.crappyChatInit(); this.poopAmbient(); } }catch(e){}
   }
@@ -2353,6 +2359,7 @@ class UI {
       const img=document.createElement('img'); img.alt='Poop familiar';
       img.dataset.face='idle'; img.src='assets/familiars/poop-idle.png';
       el.appendChild(img); document.body.appendChild(el);
+      const self=this; el.addEventListener('click',()=>{ try{ self.poopPoke(); }catch(e){} });
     }
     return el;
   }
@@ -2423,6 +2430,18 @@ class UI {
     if(Math.random()<0.22) setTimeout(()=>this.poopStreak(), 3400);
   }
   // brown-streak gag: he scoots, leaves fading smears, plays it off
+  // persistent brown spot: the board remembers, for the whole hand
+  poopStainAt(vw, vh, big){
+    const st=document.createElement('div'); st.className='poop-stain';
+    const sz=(big?60:34)+Math.random()*36;
+    st.style.width=st.style.height=sz+'px';
+    st.style.left=(vw-sz/2)+'px'; st.style.top=(vh-sz/3)+'px';
+    st.style.transform=`rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(st);
+    this._poopStains=this._poopStains||[]; this._poopStains.push(st);
+    if(this._poopStains.length>14){ const o=this._poopStains.shift(); o.remove(); } // cap: whole hand, not whole week
+  }
+  poopClearStains(){ (this._poopStains||[]).forEach(e=>{ try{e.remove();}catch(_){}}); this._poopStains=[]; }
   poopStreak(){
     try{ Sfx.fart(); }catch(e){}
     if(this.won||this._finishing||!this.poopArrived()) return;
@@ -2430,15 +2449,31 @@ class UI {
     buddy.classList.remove('streaking'); void buddy.offsetWidth; buddy.classList.add('streaking');
     setTimeout(()=>buddy.classList.remove('streaking'), 950);
     const r=buddy.getBoundingClientRect();
+    // jump-and-slide: he dashes sideways, staining the felt as he goes — "yaaaaaay!!"
+    const w=window.innerWidth;
+    const startR=parseFloat(buddy.style.right)||18;
+    const dir=Math.random()<0.5?-1:1;
+    const newR=Math.max(18, Math.min(w-160, startR+dir*(130+Math.random()*170)));
+    this.poopStainAt(r.left+r.width/2, r.top+r.height-14, true);
+    buddy.style.transition='right .55s ease-in,bottom .55s ease-in';
+    buddy.classList.remove('hop'); void buddy.offsetWidth; buddy.classList.add('hop');
+    buddy.style.right=newR+'px';
+    try{ Sfx.file('assets/voices/poop-yay.mp3'); }catch(e){}
+    // fading skid bits along the slide path
     for(let i=0;i<4;i++){
       const s=document.createElement('div'); s.className='poop-streakbit';
       const sz=14+Math.random()*22;
       s.style.width=s.style.height=sz+'px';
-      s.style.left=(r.left-95+i*28+Math.random()*16)+'px';
+      s.style.left=(Math.min(r.left,newR+40)+((Math.abs(newR-r.left)+60)/4)*i+Math.random()*10)+'px';
       s.style.top=(r.top+42+Math.random()*30)+'px';
       document.body.appendChild(s);
       setTimeout(()=>s.remove(), 8200);
     }
+    setTimeout(()=>{
+      const r2=buddy.getBoundingClientRect();
+      this.poopStainAt(r2.left+r2.width/2, r2.top+r2.height-14, true);
+      buddy.style.transition='right 1.4s ease-in-out,bottom 1.4s ease-in-out';
+    },600);
     try{ Sfx.file('sfx/boing.mp3'); }catch(e){}
     setTimeout(()=>this.poopSay('...oops!', 1800, 'assets/voices/poop-oops.mp3'), 700);
   }
@@ -2583,6 +2618,36 @@ class UI {
       }
       setTimeout(chatter, 50000+Math.random()*50000); };
     setTimeout(blink,2500); setTimeout(wander,12000); setTimeout(smile,9000); setTimeout(chatter,30000);
+  }
+  // poke the poop: several things may happen
+  poopPoke(){
+    if(!this.poopArrived()) return;
+    const buddy=this.poopEnsure(); buddy.style.display='block';
+    const roll=Math.random();
+    buddy.classList.remove('react'); void buddy.offsetWidth; buddy.classList.add('react');
+    try{
+      if(roll<0.3){ // giggle + tickles
+        Sfx.file('assets/voices/poop-giggle.mp3');
+        this.poopSay('Hee hee! That tickles!', 2000);
+      }else if(roll<0.5){ // startled fart
+        Sfx.fart(); this.poopFace('surprised');
+        this.poopSay('Oops! ...that was me.', 2000, 'assets/voices/poop-oopsie.mp3');
+        clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2200);
+      }else if(roll<0.7){ // boing bounce
+        buddy.classList.remove('hop'); void buddy.offsetWidth; buddy.classList.add('hop');
+        Sfx.file('assets/voices/poop-whee.mp3');
+        setTimeout(()=>buddy.classList.remove('hop'),600);
+      }else if(roll<0.9){ // happy wiggle + sweet line
+        this.poopFace('celebrate');
+        const lines=['Hey! Hi! Hello!','*happy wiggle*','You found me!','Best. Poke. Ever.'];
+        this.poopSay(lines[(Math.random()*lines.length)|0], 2000);
+        clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2200);
+      }else{ // shy
+        this.poopFace('surprised');
+        this.poopSay('Ack! Warn a guy first!', 2000);
+        clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2200);
+      }
+    }catch(e){}
   }
   poopKiss(name){
     const buddy=this.poopFace('idle'); buddy.style.display='block';
