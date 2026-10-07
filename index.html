@@ -2523,7 +2523,7 @@ class UI {
     return {
       greeting:["Well hey there, gorgeous! 💩","You came back! *happy wiggle*","Hiya! I was just napping. I'm awake now!","Oh good, it's you! I missed your face."],
       howareyou:["I'm crappy! ...get it? I'm literally crappy. 😎","Livin' the dream! Well, the toilet dream.","Pretty good for a little poop! You?"],
-      love:["I love you, Laura! We're gonna be best friends! 💛","Aww! *blushes brown* I love you too!","Love you more than... well, than a lot of things!"],
+      love:["I love you, Laura! We're gonna be best friends! 💛","Aww! *blushes brown* I love you too!","Love you more than... well, than a lot of things!","Laura? ...I think you're the shit."],
       joke:["Why did the poop cross the road? ...I forgot. I got distracted. 💩","What do you call a fancy poop? Poo-ding! ...I'll see myself out.","Knock knock! Who's there? ...Poop. Poop who? Exactly."],
       fart:["Heh. That one wasn't me. ...okay, it was me.","*giggles* Did the ground move for you too?","Excuse me! ...I mean, excuse ME."],
       poop:["Yep, that's me! A whole poop! Living my best life.","Being a poop is great. Low expectations, high naps.","Did you know? A group of poops is called a... just me. It's just me."],
@@ -2581,7 +2581,7 @@ class UI {
       const buddy=this.poopFace('thinking'); buddy.style.display='block';
       setTimeout(()=>{ tp.remove(); const reply=this.crappyReply(v); this.crappyChatAdd('crappy', reply);
         const rl=reply.toLowerCase();
-        try{ if(/love|adore|i love you/.test(v.toLowerCase())){ if(Math.random()<0.4) Sfx.file('assets/voices/poop-myhero.mp3'); } }catch(e){}
+        try{ if(/you're the shit/.test(reply)){ Sfx.file('assets/voices/poop-yourtheshit.mp3'); } else if(/love|adore|i love you/.test(v.toLowerCase())){ if(Math.random()<0.4) Sfx.file('assets/voices/poop-myhero.mp3'); } }catch(e){}
         try{
           if(/fart|toot|excuse me|oops/.test(rl)){ Sfx.fart(); }
           else if(/tickle|wiggle/.test(rl)&&Math.random()<0.5){ Sfx.file('assets/voices/poop-tickles.mp3'); }
@@ -2634,8 +2634,12 @@ class UI {
     const chatter=()=>{ if(!this.poopArrived()) return;
       const b=buddy();
       if(b.style.display==='block'&&!document.querySelector('#chatPanel.open')&&Math.random()<0.7){
-        const pick=lines[(Math.random()*lines.length)|0];
-        this.poopSay(pick, 2600);
+        if(Math.random()<0.12){
+          this.poopSay("Laura? ...I think you're the shit.", 2800, 'assets/voices/poop-yourtheshit.mp3');
+        }else{
+          const pick=lines[(Math.random()*lines.length)|0];
+          this.poopSay(pick, 2600);
+        }
       }
       setTimeout(chatter, 50000+Math.random()*50000); };
     setTimeout(blink,2500); setTimeout(wander,12000); setTimeout(smile,9000); setTimeout(chatter,30000);
