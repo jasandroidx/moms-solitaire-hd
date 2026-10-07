@@ -107,11 +107,12 @@ canvas#bg{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0}
 
 <script>
 // ===== LETTER SETS =====
-const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", "ordu", "our", "rod", "roud"]}
+const LETTER_SETS = [
+{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", "ordu", "our", "rod", "roud"]}
 {l:"EOAWKF",w:["awe", "awoke", "fake", "owe", "woe"]}
 {l:"AOGYTG",w:["ago", "agog", "gag", "gat", "gay", "goa", "goat", "goaty", "got", "oat", "oaty", "tag", "taggy", "tao", "toag", "toga", "toy", "yoga"]}
-{l:"AEURNZ",w:["anre", "aren", "arne", "arzun", "aune", "azure", "earn", "era", "ezan", "ezra", "nare", "naur", "naze", "near", "ran", "rane", "raun", "raze", "renu", "rue", "ruen", "run", "rune", "unze", "uran", "urea", "urena", "urn", "urna", "urnae", "uzan", "zen", "zenu"]}
-{l:"OIFSTW",w:["fiot", "fist", "fit", "fits", "foist", "iowt", "its", "oft", "otis", "sift", "sit", "soft", "sot", "sow", "sowf", "sowt", "stof", "stow", "swift", "swot", "tow", "tows", "two", "twos", "wist", "wit", "wits", "woft", "wost", "wots"]}
+{l:"AEURNZ",w:["azure", "earn", "era", "ezan", "ezra", "nare", "naur", "naze", "near", "ran", "rane", "raun", "raze", "renu", "rue", "ruen", "run", "rune", "unze", "urn", "urna"]}
+{l:"OIFSTW",w:["iowt", "its", "oft", "otis", "sift", "sit", "soft", "sot", "sow", "sowf", "sowt", "stof", "stow", "swift", "swot", "tow", "tows", "two", "twos", "wist", "wit", "wits", "woft", "wost", "wots"]}
 {l:"EAXZTS",w:["ates", "axes", "east", "eats", "etas", "exta", "sae", "sat", "sate", "sax", "saxe", "sea", "seat", "seax", "seta", "sext", "tas", "tax", "taxes", "tea", "teas", "texas", "zaxes", "zest", "zeta", "zetas"]}
 {l:"UIARTC",w:["actu", "air", "airt", "artic", "arui", "auric", "cair", "car", "cart", "cat", "catur", "citua", "crit", "crut", "cuir", "cuit", "cur", "cura", "curat", "curia", "curt", "rat", "rita", "rut", "ruta", "rutic", "tar", "tari", "tau", "taur", "tauri", "tauric", "tiar", "trac", "triac", "trica", "turi", "uratic", "uria", "uric", "urtica", "utai"]}
 {l:"EACXRM",w:["acer", "acme", "acre", "amex", "axer", "cam", "came", "car", "care", "carex", "cera", "cram", "crax", "crea", "cream", "crex", "era", "erma", "exam", "mace", "macer", "mar", "marc", "mare", "marx", "mear", "merc", "race", "ram", "rame", "ramex", "rax", "ream", "xema"]}
@@ -120,7 +121,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"AAHTRH",w:["arhat", "artha", "atar", "athar", "haar", "hah", "hart", "hat", "hath", "rah", "rat", "rata", "rath", "ratha", "taar", "taha", "tahar", "tahr", "tar", "tara", "thar", "trah"]}
 {l:"EIGHYR",w:["eigh", "eiry", "erg", "gey", "ghi", "giher", "gire", "grey", "heir", "hery", "hire", "ire", "rye", "yigh"]}
 {l:"IOOSHT",w:["his", "hist", "hit", "hits", "hoist", "hoit", "hoot", "hoots", "host", "hot", "hoti", "hots", "isth", "its", "ohio", "oho", "oohs", "oots", "otis", "shit", "shoo", "shooi", "shoot", "shot", "sit", "sith", "soho", "soot", "sooth", "sot", "soth", "sotho", "thio", "this", "thoo", "thos", "toho", "toosh", "tosh", "tshi"]}
-{l:"EAEHRN",w:["anre", "aren", "arne", "arnee", "earn", "era", "erne", "haen", "hare", "harn", "hear", "heer", "hera", "here", "hern", "herne", "nare", "near", "neer", "nere", "rah", "ran", "rane", "ranee", "reen", "rhea", "rheae", "rheen", "rhenea"]}
+{l:"EAEHRN",w:["arnee", "earn", "era", "erne", "haen", "hare", "harn", "hear", "heer", "hera", "here", "hern", "herne", "nare", "near", "neer", "nere", "rah", "ran", "rane", "ranee", "reen", "rhea", "rheae", "rheen", "rhenea"]}
 {l:"EIPDVW",w:["devi", "dew", "die", "dip", "dive", "ped", "pew", "pie", "pied", "vide", "vie", "view", "wed", "wide", "wied", "wipe", "wive", "wived"]}
 {l:"UOELFW",w:["elf", "flew", "floe", "flow", "flowe", "flue", "fole", "fou", "foul", "fowl", "fuel", "lew", "low", "lowe", "owe", "owl", "welf", "woe", "woeful", "woful", "wolf", "wouf", "woulfe"]}
 {l:"UOEFNB",w:["beno", "benu", "bone", "boun", "bueno", "bufo", "bun", "eon", "fen", "fob", "fone", "fou", "foun", "fun", "neb", "nob", "one", "unbe"]}
@@ -156,7 +157,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"AELZHF",w:["alef", "elf", "faze", "feal", "flea", "haf", "hale", "half", "haze", "hazel", "hazle", "heaf", "heal", "laze", "lea", "leaf", "leah", "zeal"]}
 {l:"AATRVG",w:["agar", "agra", "atar", "avar", "gara", "gat", "gata", "grat", "grata", "grav", "gravat", "rag", "raga", "rat", "rata", "taar", "tag", "tar", "tara", "trag", "trav", "vara", "vat"]}
 {l:"OODBCN",w:["bodo", "bond", "bondoc", "bono", "bood", "boon", "cob", "cod", "codo", "codon", "cond", "condo", "coon", "doc", "don", "doob", "doon", "nob", "nod"]}
-{l:"AUENJC",w:["acne", "aune", "cajun", "can", "cane", "ceja", "cuna", "cunea", "jacu", "jane", "jaun", "jaunce", "jean", "juan", "junc", "june", "nace", "unca"]}
+{l:"AUENJC",w:["acne", "cajun", "can", "cane", "ceja", "cuna", "cunea", "jacu", "jane", "jaun", "jaunce", "jean", "juan", "junc", "june", "nace", "unca"]}
 {l:"EICCTH",w:["ceti", "cetic", "chet", "chic", "chit", "cite", "ecch", "echt", "etch", "ethic", "hectic", "het", "hit", "ice", "ich", "itch", "tche", "tchi", "tech", "tice"]}
 {l:"EOAPRV",w:["aero", "aper", "arvo", "aver", "era", "evap", "oar", "opera", "ora", "orae", "ore", "over", "par", "pare", "parve", "pave", "paver", "pavo", "pea", "pear", "perv", "pore", "prao", "prev", "pro", "proa", "prov", "prove", "rap", "rape", "rave", "reap", "roe", "rope", "rove", "vapor", "vare", "vera", "verpa", "voar"]}
 {l:"AERQSF",w:["afer", "ares", "arse", "ears", "era", "eras", "far", "fare", "fares", "farse", "fas", "fear", "fears", "fers", "frae", "frase", "freq", "rafe", "ras", "rase", "ref", "refs", "sae", "safe", "safer", "sare", "sea", "sear", "sera", "serf"]}
@@ -231,7 +232,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"OUECNH",w:["chen", "chon", "chou", "chun", "cohen", "cohue", "cohune", "cone", "coue", "cuon", "echo", "econ", "enoch", "eon", "hoe", "hone", "hounce", "hue", "hun", "nouche", "once", "one", "ouch", "ounce", "unco"]}
 {l:"IOARFJ",w:["afro", "air", "fair", "far", "fario", "faro", "fiar", "fir", "for", "fora", "frija", "jar", "jiao", "oar", "ora", "raif", "raj"]}
 {l:"AIGRHR",w:["ahir", "air", "argh", "arri", "gair", "gharri", "ghi", "girr", "hag", "hagi", "hair", "harr", "higra", "rag", "ragi", "rah", "riga"]}
-{l:"IUAZTN",w:["aint", "ainu", "anti", "antu", "aunt", "inta", "itza", "natu", "naut", "nazi", "nit", "nut", "tain", "tan", "tau", "taun", "tina", "tiza", "tuan", "tuna", "tuza", "uinta", "unai", "uni", "uniat", "unit", "unta", "untz", "utai", "uzan", "zain", "zant", "zati", "zuni"]}
+{l:"IUAZTN",w:["aint", "ainu", "anti", "antu", "aunt", "inta", "itza", "natu", "naut", "nazi", "nit", "nut", "tain", "tan", "tau", "taun", "tina", "tiza", "tuan", "tuna", "tuza", "uinta", "unai", "uni", "uniat", "unit", "unta", "untz", "utai", "zain", "zant", "zati", "zuni"]}
 {l:"EUBSHS",w:["bess", "bus", "buses", "bush", "bushes", "buss", "hes", "hub", "hubs", "hue", "hues", "huse", "huss", "she", "shes", "sub", "subs", "sue", "sues", "sus", "use", "uses"]}
 {l:"EUSHCY",w:["chuse", "cues", "cush", "cushy", "ecus", "hes", "hue", "hues", "huey", "huse", "scye", "sec", "sech", "secy", "she", "shy", "such", "sue", "suey", "syce", "use", "yech", "yechs", "yes", "yuch"]}
 {l:"IEANCG",w:["acing", "acne", "age", "agen", "agin", "aine", "angie", "anice", "cage", "cagn", "cain", "can", "cane", "cine", "encia", "eniac", "gae", "gaen", "gain", "gaine", "gan", "gane", "gean", "geic", "gein", "gen", "gena", "genic", "gien", "gin", "ice", "inca", "incage", "inga", "nace", "nag", "naig", "necia", "ngai", "nice"]}
@@ -256,7 +257,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"UOIGPR",w:["giro", "gou", "goup", "gour", "grip", "group", "guiro", "gup", "ogpu", "orig", "our", "pig", "piro", "pirog", "pour", "prig", "prio", "pro", "prog", "pruigo", "pug", "puir", "pur", "puri", "rip", "roup", "rug", "upgo", "upo"]}
 {l:"EETJLH",w:["ethel", "heel", "hele", "het", "hete", "htel", "jee", "jeel", "jet", "jete", "jheel", "lee", "leet", "lete", "lethe", "teel", "tele", "thee"]}
 {l:"EIEYRD",w:["dee", "deer", "dere", "die", "dier", "dire", "dree", "drey", "drie", "dry", "dye", "dyer", "eery", "eide", "eider", "eire", "eiry", "erie", "eye", "eyed", "eyer", "eyre", "eyrie", "idee", "ire", "ired", "red", "rede", "redye", "reed", "reedy", "reid", "rid", "ride", "rye", "yede", "yerd", "yere", "yird"]}
-{l:"OIDCTF",w:["cod", "coft", "coif", "coit", "cot", "dicot", "dict", "dioc", "doc", "doit", "dot", "fico", "fict", "fido", "fiot", "fit", "foci", "icod", "odic", "oft", "otic"]}
+{l:"OIDCTF",w:["cod", "coft", "coif", "coit", "cot", "dicot", "dict", "dioc", "doc", "doit", "dot", "fico", "fict", "fido", "foci", "icod", "odic", "oft", "otic"]}
 {l:"AEBGYG",w:["abey", "abye", "age", "bag", "bagge", "baggy", "bay", "beg", "begay", "bye", "egba", "eggy", "gab", "gabe", "gaby", "gae", "gag", "gage", "gay", "gey", "gybe", "yegg"]}
 {l:"IEXMYR",w:["eiry", "emir", "eryx", "imer", "ire", "mir", "mire", "mirex", "miry", "mix", "mixe", "mixer", "mixy", "reim", "remi", "remix", "riem", "rim", "rime", "rimy", "rixy", "rye", "ryme", "yirm"]}
 {l:"EELGMK",w:["eke", "elem", "elk", "elm", "eme", "gee", "geek", "gel", "gem", "gemel", "glee", "gleek", "keel", "keg", "kele", "kmel", "lee", "leek", "leg", "lege", "leme", "meek", "meg", "mel", "mele"]}
@@ -279,8 +280,8 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"EOESRS",w:["eros", "erose", "erse", "ore", "ores", "ors", "ose", "oses", "osse", "rees", "roe", "roes", "rose", "roses", "ross", "see", "seer", "seor", "sere", "sero", "sers", "soe", "sore", "soree", "sores", "sos"]}
 {l:"AIHWKC",w:["cawk", "chai", "chaw", "chawk", "chia", "hack", "haick", "haik", "haw", "hawk", "hick", "ich", "kiwach", "wack", "waik", "wakhi", "whack", "whick", "wich", "wick"]}
 {l:"IAULVC",w:["aclu", "aulic", "caul", "cauli", "cavil", "cavu", "clavi", "cliv", "lac", "laic", "lavic", "lucia", "ucal", "ulva", "uval", "uvic", "vac", "vail", "vali", "via", "vial", "vica", "vicua", "vila"]}
-{l:"UAERWK",w:["aker", "akre", "arew", "aruke", "awe", "era", "kuar", "rake", "raku", "rauk", "raw", "reak", "rue", "urea", "waker", "war", "wark", "wauk", "waur", "wear", "wekau", "wreak"]}
-{l:"EIZTNK",w:["enki", "inez", "ink", "inket", "iten", "ken", "kent", "kin", "kit", "kite", "knet", "knez", "knezi", "knit", "net", "neti", "nike", "nit", "tien", "tike", "tine", "tink", "zein", "zen", "zink", "zinke"]}
+{l:"UAERWK",w:["aker", "akre", "arew", "aruke", "awe", "era", "kuar", "rake", "raku", "rauk", "raw", "reak", "rue", "waker", "war", "wark", "wauk", "waur", "wear", "wekau", "wreak"]}
+{l:"EIZTNK",w:["enki", "inez", "ink", "inket", "iten", "ken", "kent", "kin", "kit", "kite", "knet", "knez", "knezi", "knit", "net", "neti", "nike", "nit", "tien", "tike", "tine", "tink", "zein", "zink", "zinke"]}
 {l:"AIUTMC",w:["actium", "actu", "aim", "amic", "amit", "cam", "cat", "caum", "cima", "citua", "cuit", "mat", "maut", "mica", "mitu", "mitua", "muta", "mutic", "tam", "tau", "taum", "tiam", "umiac", "utai"]}
 {l:"UEESMH",w:["eheu", "eme", "emes", "emeu", "emeus", "emus", "hem", "heme", "hemes", "hems", "hes", "hue", "hues", "hum", "hume", "hums", "huse", "mese", "mesh", "meuse", "muse", "mush", "see", "seem", "seme", "she", "shee", "shem", "shemu", "smee", "sue", "sum", "use", "usee"]}
 {l:"AUPLZT",w:["lap", "lat", "pal", "palt", "pat", "patu", "paul", "paut", "plat", "put", "putz", "tap", "tapu", "tapul", "tau", "tula", "tuza", "tuzla", "ulta", "upla", "zap"]}
@@ -309,7 +310,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"EOODYL",w:["deloo", "dely", "doe", "dole", "doley", "dool", "dooley", "dooly", "doyle", "dye", "elod", "led", "lode", "loed", "loo", "lood", "looed", "looey", "loyd", "ode", "odel", "odyl", "odyle", "old", "oldy", "oleo", "yeld", "yode", "yodel", "yodle"]}
 {l:"IEULFD",w:["defi", "delf", "deul", "die", "due", "duel", "elf", "fed", "feil", "felid", "feud", "fide", "fidel", "fied", "fiel", "field", "file", "filed", "fled", "flied", "flue", "flued", "fluid", "fuel", "idle", "led", "lei", "leif", "leud", "lid", "lie", "lief", "lieu", "life"]}
 {l:"EAYQNL",w:["alen", "ayen", "ayne", "elan", "enlay", "laen", "lane", "laney", "lay", "layne", "lea", "lean", "leany", "lena", "lyn", "nael", "nale", "nay", "neal", "yean", "yen"]}
-{l:"AEOZJN",w:["aeon", "azon", "eoan", "eon", "ezan", "jane", "jean", "jeon", "joan", "naze", "neoza", "one", "onza", "ozan", "ozena", "zen", "zoea", "zona", "zone"]}
+{l:"AEOZJN",w:["aeon", "azon", "eoan", "eon", "ezan", "jane", "jean", "jeon", "joan", "naze", "neoza", "one", "onza", "ozan", "ozena", "zoea", "zona", "zone"]}
 {l:"IAOMVT",w:["aim", "amit", "atmo", "atom", "iota", "itmo", "mat", "miao", "moa", "moat", "moit", "mot", "mota", "oat", "omit", "tam", "tao", "tiam", "tiao", "timo", "toma", "tomia", "vat", "via", "vim", "vita", "vomit", "vota"]}
 {l:"UAJGHS",w:["agush", "augh", "gas", "gash", "gaus", "guha", "gush", "hag", "hags", "haj", "has", "hug", "hugs", "jag", "jags", "jug", "juga", "jugs", "juha", "sag", "saugh", "shag", "shug", "sugh", "ughs"]}
 {l:"EIURQB",w:["beri", "bier", "brei", "brie", "brique", "bure", "buri", "ire", "qeri", "quei", "quib", "quire", "reub", "rib", "ribe", "rub", "rube", "rue"]}
@@ -323,7 +324,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"OEDMYH",w:["demo", "demy", "doe", "dome", "domy", "dye", "emyd", "hem", "hoe", "hoed", "hoey", "home", "homed", "homey", "homy", "hoy", "hyde", "med", "mod", "mode", "mody", "moed", "ode", "ohed", "ohm", "yeom", "yode", "yodh"]}
 {l:"EUAGFM",w:["age", "ague", "auge", "egma", "fage", "fame", "fem", "fuage", "fumage", "fume", "gae", "game", "gaum", "gem", "geum", "guam", "gufa", "gum", "mag", "mage", "meg", "mug", "muga"]}
 {l:"EUOHGB",w:["beg", "bego", "bogue", "bouge", "bough", "bug", "egbo", "gob", "gou", "hob", "hoe", "hog", "hub", "hue", "hug", "huge", "hugo", "ough"]}
-{l:"UARVSN",w:["ansu", "anus", "naur", "ran", "ras", "raun", "run", "runs", "rusa", "san", "saur", "snur", "sun", "sur", "sura", "surv", "svan", "uran", "urn", "urna", "urns", "ursa", "urva", "usar", "van", "vans", "varus", "vasu", "vaus"]}
+{l:"UARVSN",w:["ansu", "anus", "naur", "ran", "ras", "raun", "run", "runs", "rusa", "san", "saur", "snur", "sun", "sur", "sura", "surv", "svan", "urn", "urna", "urns", "ursa", "urva", "usar", "van", "vans", "varus", "vasu", "vaus"]}
 {l:"OIERJP",w:["ijore", "ire", "irpe", "joie", "ore", "peri", "pie", "pier", "piro", "poire", "pore", "prie", "prio", "pro", "rip", "ripe", "roe", "rope"]}
 {l:"EEEWNS",w:["enew", "ense", "esne", "ewe", "ewes", "nese", "new", "news", "see", "seen", "sew", "sewen", "sewn", "snee", "snew", "ween", "weens", "wees", "wene", "wens", "wese"]}
 {l:"UAIRVK",w:["air", "aivr", "arui", "ikra", "kari", "kauri", "kavi", "kiva", "kivu", "krivu", "kuar", "kuri", "kvar", "raki", "raku", "rauk", "ravi", "riva", "uria", "urva", "vair", "vari", "via", "vira"]}
@@ -365,7 +366,7 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"IOEJBD",w:["bed", "beid", "bide", "biod", "bode", "boid", "deb", "debi", "die", "dieb", "dobe", "dobie", "doe", "ejido", "ideo", "iode", "jibe", "jibed", "job", "jobe", "joie", "obj", "ode"]}
 {l:"AAUGDL",w:["agad", "agal", "agau", "agla", "agua", "alga", "aula", "auld", "dag", "dual", "duala", "dugal", "gad", "gal", "gala", "gaud", "gaul", "glad", "gula", "guld", "lad", "lag", "laud", "lug", "udal"]}
 {l:"OEOFLD",w:["delf", "deloo", "doe", "dole", "dolf", "dool", "elf", "elod", "fed", "feod", "fled", "floe", "flood", "fold", "fole", "food", "fool", "fooled", "led", "lode", "loed", "loo", "lood", "looed", "loof", "ode", "odel", "old", "oleo", "olof"]}
-{l:"UIATFN",w:["aint", "ainu", "anti", "antu", "aunt", "fain", "faint", "fait", "fan", "fanit", "fant", "fanti", "fat", "faun", "faut", "fiant", "fiat", "fiaunt", "fin", "fit", "fun", "funt", "inta", "naif", "natu", "naut", "nit", "nut", "tain", "tan", "tau", "taun", "tina", "tuan", "tufa", "tufan", "tuna", "uinta", "unai", "unfit", "uni", "uniat", "unit", "unta", "utai"]}
+{l:"UIATFN",w:["aint", "ainu", "anti", "antu", "aunt", "fain", "faint", "fait", "fan", "fanit", "fant", "fanti", "fat", "faun", "faut", "fiant", "fiat", "fiaunt", "fin", "fun", "funt", "inta", "naif", "natu", "naut", "nit", "nut", "tain", "tan", "tau", "taun", "tina", "tuan", "tufa", "tufan", "tuna", "uinta", "unai", "unfit", "uni", "uniat", "unit", "unta", "utai"]}
 {l:"AOILSL",w:["ails", "aliso", "all", "allis", "allo", "alls", "alois", "also", "aoli", "ills", "lalo", "laos", "las", "lasi", "lias", "lila", "lilas", "lisa", "lois", "lola", "loli", "oil", "oils", "olla", "ollas", "sail", "sal", "sall", "salol", "sial", "sill", "silo", "siol", "soil", "sol", "sola", "soli"]}
 {l:"UIEVRD",w:["deriv", "derv", "devi", "die", "dier", "dire", "dive", "diver", "drie", "drive", "due", "duer", "dure", "ire", "ired", "red", "reid", "rid", "ride", "rive", "rived", "rude", "rue", "rued", "ruvid", "urde", "ureid", "uvid", "uvre", "verd", "verdi", "veri", "vide", "vie", "vier", "vire"]}
 {l:"IASLVL",w:["ails", "all", "allis", "alls", "avis", "ills", "las", "lasi", "lias", "lila", "lilas", "lisa", "sail", "sal", "sall", "sial", "sill", "silva", "siva", "slav", "slavi", "vail", "vails", "vali", "vall", "vallis", "via", "vial", "vials", "vias", "vila", "vill", "villa", "villas", "vills", "vis", "visa", "vlsi"]}
@@ -379,8 +380,8 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"UEEBDS",w:["bed", "bede", "beds", "bees", "bud", "bude", "buds", "bus", "bused", "deb", "debe", "debs", "debus", "dee", "dees", "deus", "dub", "dubs", "due", "dues", "sed", "see", "seed", "sub", "sude", "sue", "sued", "suede", "use", "used", "usee"]}
 {l:"UOACWP",w:["acop", "acoup", "cap", "capo", "caup", "caupo", "cop", "copa", "coup", "cup", "oca", "pac", "paco", "pacu", "paw", "puca", "pwca", "upo", "waco", "waup"]}
 {l:"OEIDTW",w:["deti", "dew", "die", "diet", "dite", "doe", "doit", "dot", "dote", "dowie", "edit", "ideo", "iode", "iowt", "ode", "owe", "owed", "tide", "tied", "tode", "toe", "toed", "tow", "towd", "towdie", "towed", "towie", "twie", "two", "wed", "wet", "wide", "wied", "wit", "wite", "wited", "wode", "woe", "wote"]}
-{l:"EUASNH",w:["anes", "ansu", "anus", "ashen", "aune", "esau", "haen", "hans", "hanse", "has", "hasn", "hause", "hausen", "hens", "hes", "hsuan", "hue", "hues", "hun", "huns", "huse", "nash", "nesh", "sae", "san", "sane", "sea", "sean", "sena", "shan", "shane", "she", "shean", "shen", "shun", "shune", "sue", "sun", "sune", "use", "usnea"]}
-{l:"UEANGJ",w:["age", "agen", "ague", "auge", "augen", "aune", "gae", "gaen", "gan", "gane", "gaun", "gean", "gen", "gena", "genu", "genua", "gneu", "gnu", "guan", "guna", "gunj", "gunja", "jag", "jane", "jaun", "jean", "juan", "juang", "jug", "juga", "june", "nag", "nugae", "uang"]}
+{l:"EUASNH",w:["anes", "ansu", "anus", "ashen", "esau", "haen", "hans", "hanse", "has", "hasn", "hause", "hausen", "hens", "hes", "hsuan", "hue", "hues", "hun", "huns", "huse", "nash", "nesh", "sae", "san", "sane", "sea", "sean", "sena", "shan", "shane", "she", "shean", "shen", "shun", "shune", "sue", "sun", "sune", "use", "usnea"]}
+{l:"UEANGJ",w:["age", "agen", "ague", "auge", "augen", "gae", "gaen", "gan", "gane", "gaun", "gean", "gen", "gena", "genu", "genua", "gneu", "gnu", "guan", "guna", "gunj", "gunja", "jag", "jane", "jaun", "jean", "juan", "juang", "jug", "juga", "june", "nag", "nugae", "uang"]}
 {l:"EUGNQL",w:["engl", "gel", "gen", "genl", "genu", "glen", "glue", "gneu", "gnu", "gule", "gunl", "leg", "leng", "leung", "lug", "luge", "lune", "lung", "lunge", "qung"]}
 {l:"EAOVDM",w:["admov", "admove", "amove", "amoved", "dam", "dame", "dave", "demo", "deva", "doe", "dome", "dove", "edam", "emda", "mad", "made", "mado", "maed", "mead", "med", "moa", "mod", "mode", "moed", "move", "moved", "ode", "odea", "vade", "veda"]}
 {l:"EATVYN",w:["anet", "ante", "aten", "aveny", "ayen", "ayne", "envy", "etna", "evan", "nate", "nave", "navet", "navety", "navy", "nay", "neat", "net", "nevat", "nyet", "taen", "tan", "tane", "tave", "tavy", "tea", "tean", "tyne", "van", "vane", "vat", "vena", "vent", "venta", "veny", "vet", "veta", "yate", "yean", "yeat", "yen", "yenta", "yet", "yeta"]}
@@ -406,7 +407,8 @@ const LETTER_SETS = [{l:"OUFRDR",w:["for", "ford", "fou", "four", "fur", "ord", 
 {l:"OISTQM",w:["itmo", "its", "mis", "miso", "mist", "moist", "moit", "most", "mot", "mots", "omit", "omits", "otis", "sit", "smit", "sot", "stim", "timo", "toms"]}
 {l:"IEUHDB",w:["bed", "beid", "bide", "bud", "bude", "budh", "deb", "debi", "die", "dieb", "dub", "dubhe", "due", "hid", "hide", "hied", "hub", "hue", "hued"]}
 {l:"IOATBQ",w:["abit", "bait", "bat", "biota", "bit", "bito", "boat", "bota", "boti", "ibota", "iota", "oat", "obia", "obit", "tab", "tabi", "tao", "tiao", "toba"]}
-{l:"UUOGST",w:["got", "gou", "gout", "gouts", "gust", "gusto", "gut", "guts", "otus", "oust", "out", "outs", "sot", "sou", "stog", "stug", "suto", "sutu", "togs", "toug", "tug", "tugs"]}];
+{l:"UUOGST",w:["got", "gou", "gout", "gouts", "gust", "gusto", "gut", "guts", "otus", "oust", "out", "outs", "sot", "sou", "stog", "stug", "suto", "sutu", "togs", "toug", "tug", "tugs"]}
+];
 
 const COMMON_3
 
