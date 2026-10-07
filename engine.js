@@ -358,6 +358,10 @@ class GameEngine {
   }
 }
 
+// Pre-allocated static suit arrays for safeF checks to avoid array allocations in hot search loops
+const OPP_SUITS_RED = ['spades', 'clubs'];
+const OPP_SUITS_BLACK = ['hearts', 'diamonds'];
+
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -365,14 +369,13 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   timeoutMs = timeoutMs || 800;
   const t0 = Date.now();
   const top = a => a[a.length - 1];
-  const cloneCard = c => ({ id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp });
-  // Fast array cloning to avoid .map() closure/array allocation overhead during solver search
-  const cloneCol = col => {
-    const len = col.length;
-    const res = new Array(len);
-    for (let i = 0; i < len; i++) res[i] = cloneCard(col[i]);
-    return res;
-  };
+
+  // Copy-on-write helpers: cards are immutable except faceUp status, so we avoid cloning unchanged card objects.
+  const flipUp = c => c.faceUp ? c : { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: true };
+  const flipDown = c => !c.faceUp ? c : { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: false };
+
+  // Fast shallow column array cloning. Reuses card references without reallocating 52 card objects per clone.
+  const cloneCol = col => col.slice();
   const cloneState = s => ({
     stock: cloneCol(s.stock),
     waste: cloneCol(s.waste),
@@ -387,11 +390,12 @@ function isSolvable(dealState, drawCount, timeoutMs) {
       cloneCol(s.tableau[4]), cloneCol(s.tableau[5]), cloneCol(s.tableau[6])
     ]
   });
+
   const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1, opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
+    const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
     return opp.every(s => f[s].length && top(f[s]).rank >= need);
   };
   const canT = (seq, col) => {
@@ -407,6 +411,12 @@ function isSolvable(dealState, drawCount, timeoutMs) {
            col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
     return (col[i] && col[i].faceUp) ? col.slice(i) : [];
   };
+  const revealTop = col => {
+    if (col.length && !top(col).faceUp) {
+      col[col.length - 1] = flipUp(top(col));
+    }
+  };
+
   // eagerly play provably-safe foundation moves (shrinks the search space hugely)
   const autoF = s => {
     let moved = true;
@@ -417,7 +427,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         const t = top(col);
         if (t.faceUp && canF(t, s.foundations) && safeF(t, s.foundations)) {
           s.foundations[t.suit].push(col.pop());
-          if (col.length && !top(col).faceUp) top(col).faceUp = true;
+          revealTop(col);
           moved = true; break;
         }
       }
@@ -434,35 +444,31 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     if (s.stock.length || s.waste.length) return false;
     return s.tableau.every(col => col.every(c => c.faceUp));
   };
-  // Fast state key generator avoiding map/join temporary array allocations (~2.6x faster than .map().join())
+
+  // Compact state key generator using String.fromCharCode to encode card IDs (0..51) into single characters.
+  // Reduces state key string length by ~64% (from ~180 to ~65 chars), boosting Set.has/add lookup speed and reducing GC memory overhead.
   function key(s) {
     let str = '';
     const st = s.stock;
-    for (let i = 0; i < st.length; i++) {
-      if (i > 0) str += ',';
-      str += st[i].id;
-    }
+    for (let i = 0; i < st.length; i++) str += String.fromCharCode(st[i].id);
     str += ';';
     const w = s.waste;
-    for (let i = 0; i < w.length; i++) {
-      if (i > 0) str += ',';
-      str += w[i].id;
-    }
+    for (let i = 0; i < w.length; i++) str += String.fromCharCode(w[i].id);
     str += ';';
     const f = s.foundations;
-    str += f.spades.length + ',' + f.hearts.length + ',' + f.diamonds.length + ',' + f.clubs.length + ';';
+    str += String.fromCharCode(f.spades.length, f.hearts.length, f.diamonds.length, f.clubs.length) + ';';
     const tab = s.tableau;
     for (let c = 0; c < 7; c++) {
       if (c > 0) str += '|';
       const col = tab[c];
       for (let i = 0; i < col.length; i++) {
-        if (i > 0) str += ',';
         const card = col[i];
-        str += (card.faceUp ? 'u' : 'd') + card.id;
+        str += String.fromCharCode(card.id + (card.faceUp ? 128 : 0));
       }
     }
     return str;
   }
+
   const seen = new Set(), stack = [cloneState(dealState)];
   while (stack.length) {
     if ((seen.size & 63) === 0 && Date.now() - t0 > timeoutMs) return false;
@@ -479,7 +485,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
       if (t.faceUp && canF(t, cur.foundations)) {
         const n = cloneState(cur), card = n.tableau[c].pop();
         n.foundations[card.suit].push(card);
-        if (n.tableau[c].length && !top(n.tableau[c]).faceUp) top(n.tableau[c]).faceUp = true;
+        revealTop(n.tableau[c]);
         moves.push([10, n]);
       }
     }
@@ -496,7 +502,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
-        if (n.tableau[a].length && !top(n.tableau[a]).faceUp) top(n.tableau[a]).faceUp = true;
+        revealTop(n.tableau[a]);
         moves.push([exposes ? 8 : 4, n]);
       }
     }
@@ -509,8 +515,15 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     if (cur.stock.length || cur.waste.length) { // draw / recycle
       const n = cloneState(cur);
-      if (!n.stock.length) { while (n.waste.length) { const c = n.waste.pop(); c.faceUp = false; n.stock.push(c); } }
-      else for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) { const c = n.stock.pop(); c.faceUp = true; n.waste.push(c); }
+      if (!n.stock.length) {
+        while (n.waste.length) {
+          n.stock.push(flipDown(n.waste.pop()));
+        }
+      } else {
+        for (let i = 0; i < (drawCount || 1) && n.stock.length; i++) {
+          n.waste.push(flipUp(n.stock.pop()));
+        }
+      }
       moves.push([2, n]);
     }
     moves.sort((x, y) => x[0] - y[0]);
