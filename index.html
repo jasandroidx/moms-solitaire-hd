@@ -489,6 +489,10 @@ header,#board{position:relative;z-index:3;}
 #chatForm{display:flex;gap:8px;padding:10px;border-top:2px solid #4a3418;}
 #chatInput{flex:1;font-size:19px;padding:10px 12px;border-radius:12px;border:2px solid #4a3418;font-family:Georgia,serif;background:#fff;}
 #chatSend{font-size:19px;font-weight:700;padding:10px 16px;border-radius:12px;border:2px solid #4a3418;background:#4a3418;color:#ffe9a8;cursor:pointer;font-family:Georgia,serif;}
+#chatChips{display:flex;flex-wrap:wrap;gap:8px;padding:12px;border-top:2px solid #4a3418;}
+.chat-chip{font-size:18px;font-family:Georgia,serif;font-weight:700;padding:10px 14px;border-radius:999px;border:2px solid #4a3418;background:#fff;color:#4a3418;cursor:pointer;transition:transform .15s,background .15s;}
+.chat-chip:hover{background:#f3e2b3;transform:scale(1.05);}
+.chat-chip:active{transform:scale(.95);}
 .poop-bubble:after{content:'';position:absolute;right:-8px;bottom:14px;width:14px;height:14px;background:#fffbe8;border-right:2px solid #4a3418;border-bottom:2px solid #4a3418;transform:rotate(-45deg);}
 #intro{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;
   background:rgba(8, 14, 10, 0.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto;}
@@ -756,6 +760,10 @@ body[data-scene]::after{
   border:3px solid #2a1f14;background:#241a10;padding:0;cursor:pointer;z-index:40;overflow:hidden;
   box-shadow:0 4px 14px rgba(0,0,0,.5)}
 #bScope img{width:100%;height:100%;object-fit:contain;display:block;transition:transform .25s}
+#bFull{position:fixed;left:100px;bottom:14px;width:76px;height:76px;border-radius:50%;
+  border:3px solid #2a1f14;background:#241a10;cursor:pointer;z-index:40;color:#ffe9a8;font-size:34px;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 14px rgba(0,0,0,.5)}
 #bScope:hover img{transform:scale(1.08)}
 #scopePop{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
 #scopePop.show{display:flex}
@@ -918,6 +926,7 @@ body.deep-sleep #felt {
 <audio id="radioAudio" preload="none"></audio>
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
+<button id="bFull" title="Fullscreen on/off" aria-label="Fullscreen on/off">⛶</button>
 <div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
@@ -1305,16 +1314,7 @@ const Sfx = {
         o.connect(g); g.connect(ctx.destination);
         o.start(t); lfo.start(t); o.stop(t+0.21); lfo.stop(t+0.21);
       },
-      // Clown Honk
-      ()=>{
-        const ctx=this.ctx, t=ctx.currentTime;
-        [190, 230].forEach(f=>{
-          const o=ctx.createOscillator(), g=ctx.createGain();
-          o.type='sawtooth'; o.frequency.setValueAtTime(f, t);
-          g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.18);
-          o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.19);
-        });
-      },
+
       // Slide Down Whistle
       ()=>{
         const ctx=this.ctx, t=ctx.currentTime;
@@ -1801,16 +1801,16 @@ const CUSTOM = {
     ace: 'aceofspades.mp3',              // she turns over the ace of spades ♠
     kingHearts: 'king-nothing.mp3',      // FIRST king of hearts flip per game — 👑 nothing
     wiggle: 'goofy-spring-bounces.mp3',   // cards wiggle when she's idle
-    rareCard: 'clown-horn.mp3',           // VERY rare gag when she clicks a card
+    rareCard: 'boing.mp3',           // VERY rare gag when she clicks a card
     rareCardChance: 0.006,                // 0.6% + 5-min cooldown — genuinely rare
     whale: 'whale.mp3',                  // 🐋 aquarium table: win celebration + rare idle call (freesound.org/people/muri_kuri/sounds/684188 — CC license, recheck before public release)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
     cardPlace: ['card-place.mp3', 'boing.mp3'],
     dealWhoosh: ['deal-whoosh.mp3', 'goofy-spring-bounces.mp3'],
-    sillyClick: ['boing.mp3', 'clown-horn.mp3', 'wow-m.mp3'],
+    sillyClick: ['boing.mp3', 'wow-m.mp3'],
     sillyPlace: ['card-place.mp3', 'crowd-ooooh.mp3', 'crowd-aaaah.mp3', 'audience-cheer-clap.mp3'],
-    illegal: ['clown-horn.mp3', 'boing.mp3'],
+    illegal: ['boing.mp3'],
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
@@ -1837,12 +1837,11 @@ const CUSTOM = {
   sounds: {
     poop: {
       plop: ['boing.mp3', 'card-place.mp3'],
-      squeak: ['clown-horn.mp3'],
+      squeak: ['boing.mp3'],
       happy: ['wow-m.mp3'],
       win: ['audience-cheer-clap.mp3'],
       idle: ['goofy-spring-bounces.mp3'],
       // NEW: Poop sounds
-      fart: ['clown-horn.mp3', 'fart.mp3'], // TOOT! sound
       celebrate: ['crowd-ooooh.mp3', 'crowd-aaaah.mp3'], // victory cheers
       wave: ['wave.mp3'], // gentle wave sound
       streak: ['streak.mp3'], // trail sound
@@ -1965,6 +1964,7 @@ class Familiar {
       this.xp[f]-=(this.lvl[f]||1)*XP_PER_LVL;
       this.lvl[f]=(this.lvl[f]||1)+1;
       if(window.ui) window.ui.say(FAMILIAR_NAMES[f]+' leveled up to Lv.'+this.lvl[f]+'! 🎉');
+      try{ if(window.ui&&f==='poop') window.ui.poopLevelUp(this.lvl[f]); }catch(e){}
     }
     this.save(); this.renderBar();
   }
@@ -2355,15 +2355,41 @@ class UI {
   }
   // ---------- Happy Crappy: the poop-emoji familiar ----------
   poopArrived(){ return !!store.get('poop_arrived', false); }
+  poopLevel(){ try{ return (typeof fam!=='undefined'&&fam&&fam.lvl&&fam.lvl['poop'])||1; }catch(e){ return 1; } }
+  poopApplySize(){ const b=$('#poopbuddy'); if(!b) return;
+    const s=Math.min(1.4, 1+(this.poopLevel()-1)*0.08); b.style.width=(96*s)+'px'; b.style.height=(96*s)+'px'; }
+  poopLevelUp(lvl){
+    this.poopApplySize();
+    this.say('Crappy reached Lv.'+lvl+'! 🎉 She\'s growing!');
+    try{ Sfx.file('assets/voices/poop-woohoo.mp3'); }catch(e){}
+    const b=this.poopFace('celebrate'); b.style.display='block';
+    b.classList.remove('react'); void b.offsetWidth; b.classList.add('react');
+    this.poopSay('I\'m level '+lvl+'! I\'m practically a grown-up!', 2600);
+    clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2800);
+    try{ this.crappyChatBuild(); }catch(e){}
+  }
   poopEnsure(){
-    this.crappyChatInit();
+    this.crappyChatInit(); this.poopApplySize();
     let el=$('#poopbuddy');
     if(!el){
       el=document.createElement('div'); el.id='poopbuddy'; el.className='poop-buddy'; el.style.display='none';
       const img=document.createElement('img'); img.alt='Poop familiar';
       img.dataset.face='idle'; img.src='assets/familiars/poop-idle.png';
       el.appendChild(img); document.body.appendChild(el);
-      const self=this; el.addEventListener('click',()=>{ try{ self.poopPoke(); }catch(e){} });
+      const self=this;
+      // drag her around the board; a tap (no drag) is a poke
+      let pd=null;
+      el.addEventListener('pointerdown',e=>{ pd={x:e.clientX,y:e.clientY,r:parseFloat(el.style.right)||18,b:parseFloat(el.style.bottom)||64,moved:false};
+        el.style.transition='none'; try{ el.setPointerCapture(e.pointerId); }catch(_){}} );
+      el.addEventListener('pointermove',e=>{ if(!pd) return;
+        const dx=e.clientX-pd.x, dy=e.clientY-pd.y;
+        if(Math.hypot(dx,dy)>10) pd.moved=true;
+        if(pd.moved){ el.style.right=Math.max(-20,Math.min(window.innerWidth-40,pd.r-dx))+'px';
+          el.style.bottom=Math.max(-20,Math.min(window.innerHeight-40,pd.b-dy))+'px'; } });
+      el.addEventListener('pointerup',e=>{ if(!pd) return;
+        el.style.transition='right 1.4s ease-in-out,bottom 1.4s ease-in-out';
+        const wasDrag=pd.moved; pd=null;
+        if(!wasDrag){ try{ self.poopPoke(); }catch(_){} } });
     }
     return el;
   }
@@ -2524,6 +2550,8 @@ class UI {
   }
   crappyReply(text){
     const t=(text||'').toLowerCase(), L=this.crappyLines();
+    if(t==='surprise'){ const bk=['joke','love','fart','howareyou','poop','greeting']; return this.crappyReply(bk[(Math.random()*bk.length)|0]); }
+    if(t==='fact'){ const F=(typeof POOP_FACTS!=='undefined'?POOP_FACTS:[]); if(F.length) return F[(Math.random()*F.length)|0]; }
     const has=(...ws)=>ws.some(w=>t.includes(w));
     let bucket='fallback';
     if(has('hello','hi ','hey','hiya','howdy','good morning','good afternoon')) bucket='greeting';
@@ -2551,19 +2579,54 @@ class UI {
   crappyChatInit(){
     if($('#chatBtn')) return;
     const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
-    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open');
+    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
       if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><form id="chatForm"><input id="chatInput" placeholder="Say hi to Crappy..." autocomplete="off" maxlength="120"/><button id="chatSend" type="submit">Send</button></form>';
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
     $('#chatClose').onclick=()=>panel.classList.remove('open');
-    $('#chatForm').onsubmit=(e)=>{ e.preventDefault(); const inp=$('#chatInput'); const v=inp.value.trim(); if(!v) return;
-      inp.value=''; this.crappyChatAdd('mom', v);
-      const tp=this.crappyChatAdd('crappy','...'); tp.classList.add('typing');
-      const buddy=this.poopFace('thinking'); buddy.style.display='block';
-      setTimeout(()=>{ tp.remove(); const reply=this.crappyReply(v); this.crappyChatAdd('crappy', reply);
+    this.crappyChatBuild();
+    this.crappyChatUpdate();
+  }
+  // chat tricks unlock as she levels: Lv2 slide, Lv3 dance, Lv4 kiss
+  crappyChatBuild(){
+    const box=$('#chatChips'); if(!box) return; box.innerHTML='';
+    const lvl=this.poopLevel();
+    const chips=[
+      ["😂 Tell me a joke","joke",1],["💛 Say something sweet","love",1],
+      ["💨 Do a fart","fart",1],["😴 Are you sleepy?","sleep",1],
+      ["👋 Say hi","hello",1],["💩 Interesting fact","fact",1],
+      ["🎲 Surprise me","surprise",1],
+      ["🛝 Do the slide!","slide",2,"cmd"],["💃 Dance!","dance",3,"cmd"],
+      ["💋 Blow a kiss","kiss",4,"cmd"],
+    ];
+    chips.forEach(c=>{
+      const b=document.createElement('button'); b.className='chat-chip';
+      if(lvl>=c[2]){ b.textContent=c[0];
+        b.onclick=()=>{ if(c[3]==='cmd') this.crappyChatCmd(c[1]); else this.crappyChatAsk(c[0], c[1]); };
+      }else{ b.textContent='🔒 '+c[0].split(' ').slice(1).join(' ')+' (Lv.'+c[2]+')'; b.disabled=true; b.style.opacity='.45'; }
+      box.appendChild(b);
+    });
+  }
+  crappyChatCmd(cmd){
+    const buddy=this.poopEnsure(); buddy.style.display='block';
+    if(cmd==='slide'){ this.crappyChatAdd('mom','🛝 Do the slide!'); this.poopStreak(); }
+    else if(cmd==='dance'){ this.crappyChatAdd('mom','💃 Dance!');
+      this.poopFace('celebrate'); buddy.classList.remove('react'); void buddy.offsetWidth; buddy.classList.add('react');
+      try{ Sfx.file('assets/voices/poop-wiggle.mp3'); }catch(e){}
+      this.poopSay('Wiggle wiggle wiggle! Wheee!', 2400);
+      clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2600); }
+    else if(cmd==='kiss'){ this.crappyChatAdd('mom','💋 Blow a kiss');
+      try{ this.poopKiss((this.playerName||'Mom').toUpperCase()); }catch(e){} }
+  }
+  crappyChatAsk(label, keyword){
+    this.crappyChatAdd('mom', label);
+    const tp=this.crappyChatAdd('crappy','...'); tp.classList.add('typing');
+    const buddy=this.poopFace('thinking'); buddy.style.display='block';
+    const v=keyword;
+    setTimeout(()=>{ tp.remove(); const reply=this.crappyReply(v); this.crappyChatAdd('crappy', reply);
         const rl=reply.toLowerCase();
         try{ if(/you're the shit/.test(reply)){ Sfx.file('assets/voices/poop-yourtheshit.mp3'); } else if(/love|adore|i love you/.test(v.toLowerCase())){ if(Math.random()<0.4) Sfx.file('assets/voices/poop-myhero.mp3'); } }catch(e){}
         try{
@@ -2571,8 +2634,7 @@ class UI {
           else if(/tickle|wiggle/.test(rl)&&Math.random()<0.5){ Sfx.file('assets/voices/poop-tickles.mp3'); }
         }catch(e){}
         const b=this.poopEnsure(); b.classList.remove('react'); void b.offsetWidth; b.classList.add('react');
-        this.poopFace(Math.random()<0.3?'celebrate':'idle'); }, 700+Math.random()*700); };
-    this.crappyChatUpdate();
+        this.poopFace(Math.random()<0.3?'celebrate':'idle'); }, 700+Math.random()*700);
   }
   crappyChatAdd(who, text){
     const log=$('#chatLog'); if(!log) return null;
@@ -2725,6 +2787,7 @@ class UI {
   }
   afterMove(msg){
     this.ensureTimer(); this.view.render(this); this.updateStats();
+    try{ const m=this.eng.state.moves||0; if(m>0&&m%25===0&&typeof fam!=='undefined'&&fam) fam.earnXP(10); }catch(e){}
 
     // Familiar spontaneous reactions
     if(fam.equipped && Math.random() < 0.25) {
@@ -2779,6 +2842,7 @@ class UI {
       store.set('daily_stats', this.dailyStats);
     }
 
+    try{ if(typeof fam!=='undefined'&&fam) fam.earnXP(40); }catch(e){}
     Sfx.win(); Vox.play('win'); this.winShow();
     // photo slideshow during win
     this.photoShow();
@@ -3287,6 +3351,13 @@ class UI {
     $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
     Radio.init();
+    const bf=$('#bFull');
+    if(bf){ bf.onclick=()=>{ try{
+      if(document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    }catch(e){} };
+      document.addEventListener('fullscreenchange',()=>{ bf.textContent=document.fullscreenElement?'✕':'⛶'; });
+    }
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
         $('#bMusic').textContent='Music off'; $('#bMusic').setAttribute('aria-pressed', 'false'); });
