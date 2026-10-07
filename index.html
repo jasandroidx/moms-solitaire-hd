@@ -442,6 +442,17 @@ header,#board{position:relative;z-index:3;}
 .poop-splash{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:opacity .45s;}
 .poop-splash.show{opacity:1;}
 .poop-splash span{font-family:Georgia,serif;font-weight:900;font-size:min(64px,9vw);color:#ffe699;text-shadow:0 6px 24px rgba(0,0,0,.7),0 0 60px rgba(255,150,50,.35);transform:rotate(-4deg);text-align:center;padding:0 16px;}
+/* brown-streak gag: fading smears */
+.poop-streakbit{position:fixed;z-index:74;pointer-events:none;border-radius:50%;background:radial-gradient(ellipse at center,#7a4a1e 0%,#5a3413 65%,rgba(90,52,19,0) 100%);animation:poopStreakFade 8s ease-out forwards;}
+@keyframes poopStreakFade{0%{opacity:.9;transform:scale(.7);}25%{opacity:.85;transform:scale(1);}100%{opacity:0;transform:scale(1.15);}}
+.poop-buddy.streaking{animation:poopScoot .9s ease-in-out;}
+@keyframes poopScoot{0%,100%{transform:translateX(0) rotate(0);}35%{transform:translateX(-80px) rotate(-12deg) scale(1.05);}70%{transform:translateX(-30px) rotate(8deg);}}
+/* celebration: rainbow + star burst behind the buddy */
+.poop-party{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;z-index:-1;}
+.poop-rainbow{position:absolute;left:-70px;top:-160px;font-size:110px;transform:scale(0);opacity:0;animation:poopRainbow 2.4s ease-out forwards;}
+@keyframes poopRainbow{0%{transform:scale(0) rotate(-10deg);opacity:0;}20%{opacity:1;}55%{transform:scale(1.1) rotate(5deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:0;}}
+.poop-star{position:absolute;font-size:20px;opacity:0;animation:poopStarFloat 1.9s ease-out forwards;}
+@keyframes poopStarFloat{0%{transform:translateY(10px) scale(.4);opacity:0;}25%{opacity:1;}100%{transform:translateY(-90px) scale(1.25);opacity:0;}}
 @keyframes poopPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
 @keyframes poopBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 .poop-buddy.react{animation:poopWiggle .7s ease-in-out;}
@@ -1824,6 +1835,29 @@ const CUSTOM = {
 
 /* ---------- Familiar system ---------- */
 const FAMILIAR_NAMES = { poop:'Poop' };
+/* Happy Crappy drops poop facts at random — mom-approved, mostly true */
+const POOP_FACTS = [
+"Wombats poop cubes! And I'M the weird one?!",
+"A blue whale's poop is so big the ocean notices.",
+"Sloths only poop once a week. Talk about holding it in.",
+"Penguin poop is pink! It's the krill diet. Fancy.",
+"Astronaut poop gets jettisoned into space. I'm basically a star.",
+"Elephants poop about 15 times a day. Amateurs.",
+"Ancient Romans shared a sponge on a stick. Be grateful for toilet paper.",
+"There's a museum in England dedicated entirely to poop. I have a wing.",
+"Koala babies eat their mom's poop. Nature is beautiful.",
+"Cow patties can fuel a campfire. I'm multi-talented.",
+"Guano — bat poop — was once worth going to war over. Respect.",
+"A dairy cow makes 65 pounds of manure a day. I make... less.",
+"Dung beetles navigate by the Milky Way. Poop astronomers.",
+"The first flushing toilet was invented in 1596. I've waited centuries for this.",
+"Pandas poop 40 times a day. Bamboo goes right through you.",
+"In space, poop doesn't fall. It just floats there. Menacingly.",
+"Worm poop makes the best garden soil. I'm fertilizer royalty.",
+"Scientists can tell what you ate from... you know what, never mind how I know that.",
+"Termites build mounds out of poop and spit. Architecture!",
+"My cousin the chocolate soft-serve wishes he was me.",
+];
 const FAMILIAR_XP = { poop:0 };
 const FAMILIAR_LVL = { poop:1 };
 const XP_PER_LVL = 100;
@@ -2299,8 +2333,51 @@ class UI {
     const buddy=this.poopFace(faces[(Math.random()*faces.length)|0]); buddy.style.display='block';
     buddy.classList.remove('react'); void buddy.offsetWidth; buddy.classList.add('react');
     const lines=['Wow, great move!','Hmm, interesting...','Yes!','Ooh, I like that one!','Smooth! ...for a human.','Did you SEE that?!'];
-    this.whisper('\u{1F4A9} '+lines[(Math.random()*lines.length)|0]);
+    const line = Math.random()<0.5
+      ? POOP_FACTS[(Math.random()*POOP_FACTS.length)|0]
+      : lines[(Math.random()*lines.length)|0];
+    this.whisper('\u{1F4A9} '+line);
     clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 3200);
+    // rare brown-streak gag (~5% of moves): a beat after the reaction
+    if(Math.random()<0.22) setTimeout(()=>this.poopStreak(), 3400);
+  }
+  // brown-streak gag: he scoots, leaves fading smears, plays it off
+  poopStreak(){
+    if(this.won||this._finishing||!this.poopArrived()) return;
+    const buddy=this.poopFace('idle'); buddy.style.display='block';
+    buddy.classList.remove('streaking'); void buddy.offsetWidth; buddy.classList.add('streaking');
+    setTimeout(()=>buddy.classList.remove('streaking'), 950);
+    const r=buddy.getBoundingClientRect();
+    for(let i=0;i<4;i++){
+      const s=document.createElement('div'); s.className='poop-streakbit';
+      const sz=14+Math.random()*22;
+      s.style.width=s.style.height=sz+'px';
+      s.style.left=(r.left-95+i*28+Math.random()*16)+'px';
+      s.style.top=(r.top+42+Math.random()*30)+'px';
+      document.body.appendChild(s);
+      setTimeout(()=>s.remove(), 8200);
+    }
+    try{ Sfx.play('boing.mp3'); }catch(e){}
+    setTimeout(()=>this.poopSay('...oops!', 1800), 700);
+  }
+  // rainbow + star burst behind him (win celebration, like the concept video)
+  poopParty(){
+    const buddy=this.poopEnsure(); buddy.style.display='block';
+    let fx=buddy.querySelector('.poop-party'); if(fx) fx.remove();
+    fx=document.createElement('div'); fx.className='poop-party';
+    const rb=document.createElement('div'); rb.className='poop-rainbow'; rb.textContent='\u{1F308}'; fx.appendChild(rb);
+    const glyphs=['\u2728','\u2B50','\u{1F4AB}','\u{1F31F}'];
+    for(let i=0;i<12;i++){
+      const st=document.createElement('span'); st.className='poop-star';
+      st.textContent=glyphs[(Math.random()*glyphs.length)|0];
+      st.style.left=((Math.random()*160)-80)+'px';
+      st.style.top=((Math.random()*60)-110)+'px';
+      st.style.animationDelay=(Math.random()*0.5)+'s';
+      fx.appendChild(st);
+    }
+    buddy.appendChild(fx);
+    setTimeout(()=>{ if(fx.isConnected) fx.remove(); }, 2600);
+    try{ Sfx.play('audience-cheer-clap.mp3'); }catch(e){}
   }
   commentate(kind, card){
     if(!CUSTOM.commentator) return;
@@ -2411,8 +2488,9 @@ class UI {
     Sfx.win(); Vox.play('win'); this.winShow();
     // photo slideshow during win
     this.photoShow();
+    const hadPoop=this.poopArrived();
     this.unlockPoop(); // Happy Crappy arrives (first win ever; self-gated)
-    if(this.poopArrived()){ this.poopFace('celebrate'); clearTimeout(this._poopWinT); this._poopWinT=setTimeout(()=>this.poopFace('idle'), 6000); }
+    if(hadPoop){ this.poopFace('celebrate'); this.poopParty(); clearTimeout(this._poopWinT); this._poopWinT=setTimeout(()=>this.poopFace('idle'), 6000); }
     // bonus video after first win: disabled for now (win shows only)
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
