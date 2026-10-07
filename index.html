@@ -1083,6 +1083,26 @@ const Sfx = {
     const bass=[[130.81,0],[98,.44],[110,.88],[87.31,1.32],[98,1.76],[130.81,2.20,.6]];
     bass.forEach(n=>this.tone(n[0],n[2]||.4,'sine',.08,.65+n[1]));
   },
+  /* Crappy's arrival theme: bouncy, upbeat, unmistakably happy */
+  crappyTheme(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    try{
+      // quick happy arpeggio up
+      const arp=[[523.25,0],[659.25,.09],[783.99,.18],[1046.5,.27,.3]];
+      arp.forEach(n=>this.tone(n[0],n[2]||.12,'triangle',.12,n[1]));
+      // bouncy lead melody
+      const mel=[[659.25,.55],[783.99,.73],[1046.5,.91,.28],[783.99,1.22],[880,1.40],[783.99,1.58],[698.46,1.76],[659.25,1.94],
+        [587.33,2.12],[659.25,2.30],[698.46,2.48],[587.33,2.66],[659.25,2.84,.38],[523.25,3.28,.5],
+        [659.25,3.85],[783.99,4.03],[880,4.21],[1046.5,4.39,.36],[987.77,4.82],[1046.5,5.00,.65]];
+      mel.forEach(n=>this.tone(n[0],n[2]||.16,'triangle',.11,.35+n[1]));
+      // oom-pah bass keeps it marching
+      const bass=[[130.81,.55],[98,.91],[110,1.27],[98,1.63],[87.31,1.99],[98,2.35],[130.81,2.71,.55],
+        [130.81,3.55],[87.31,3.91],[98,4.27],[130.81,4.63,.7]];
+      bass.forEach(n=>this.tone(n[0],n[2]||.32,'sine',.09,.35+n[1]));
+      // sparkle on top
+      [2093,2349.32,2637.02].forEach((f,i)=>this.tone(f,.3,'sine',.05,5.1+i*.12));
+    }catch(e){}
+  },
   /* Card Click / Selection: an array of fun silly sound generators */
   clickCard(){
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
@@ -2393,6 +2413,7 @@ class UI {
     const name=(this.playerName||'Mom').toUpperCase();
     const beats=[
       {t:'HELLO '+name+'!', v:'assets/voices/poop-hello.mp3', face:'wave'},
+      {t:"I'M CRAPPY! ...like, literally.", v:'assets/voices/poop-imcrappy.mp3', face:'celebrate'},
       {t:'CAN WE BEST FRIENDS?!', v:'assets/voices/poop-bestfriends.mp3', face:'idle'},
       {t:'I LOVE YOUUUUUU!!', v:'assets/voices/poop-loveyou.mp3', face:'idle'},
       {t:'Man, I feel like crap!', v:'assets/voices/poop-feelcrap.mp3', face:'idle'},
@@ -2403,7 +2424,7 @@ class UI {
     setTimeout(()=>{ sp.classList.add('show'); setTimeout(()=>sp.classList.remove('show'), 2100); }, 1100);
     setTimeout(()=>{
       const buddy=this.poopFace('wave'); buddy.style.display='block';
-      try{ Sfx.poopFanfare(); }catch(e){}
+      try{ Sfx.crappyTheme(); }catch(e){}
       beats.forEach((b,i)=> setTimeout(()=>{ this.poopFace(b.face); this.poopSay(b.t, 2600, b.v); }, i*2300));
       const T=beats.length*2300;
       // finale: he declares his love, lunges at the screen, plants a kiss
@@ -2563,7 +2584,7 @@ class UI {
         try{ if(/love|adore|i love you/.test(v.toLowerCase())){ if(Math.random()<0.4) Sfx.file('assets/voices/poop-myhero.mp3'); } }catch(e){}
         try{
           if(/fart|toot|excuse me|oops/.test(rl)){ Sfx.fart(); }
-          else if(/hee hee|giggle|wiggle/.test(rl)&&Math.random()<0.5){ Sfx.file('assets/voices/poop-giggle.mp3'); }
+          else if(/tickle|wiggle/.test(rl)&&Math.random()<0.5){ Sfx.file('assets/voices/poop-tickles.mp3'); }
         }catch(e){}
         const b=this.poopEnsure(); b.classList.remove('react'); void b.offsetWidth; b.classList.add('react');
         this.poopFace(Math.random()<0.3?'celebrate':'idle'); }, 700+Math.random()*700); };
@@ -2626,9 +2647,9 @@ class UI {
     const roll=Math.random();
     buddy.classList.remove('react'); void buddy.offsetWidth; buddy.classList.add('react');
     try{
-      if(roll<0.3){ // giggle + tickles
-        Sfx.file('assets/voices/poop-giggle.mp3');
-        this.poopSay('Hee hee! That tickles!', 2000);
+      if(roll<0.3){ // tickles
+        Sfx.file('assets/voices/poop-tickles.mp3');
+        this.poopSay('That tickles!', 2000);
       }else if(roll<0.5){ // startled fart
         Sfx.fart(); this.poopFace('surprised');
         this.poopSay('Oops! ...that was me.', 2000, 'assets/voices/poop-oopsie.mp3');
