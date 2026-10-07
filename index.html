@@ -1017,6 +1017,21 @@ const Sfx = {
   },
   /* play an arbitrary audio file by path (voices, one-shots) */
   file(src){ if(this.muted) return; this.ensure(); try{ const a=new Audio(src); const p=a.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} },
+  /* Happy Crappy entrance jingle: slide-whistle up + bouncy oom-pah melody, all synth */
+  poopFanfare(){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    const ctx=this.ctx, t0=ctx.currentTime;
+    try{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.setValueAtTime(350,t0); o.frequency.exponentialRampToValueAtTime(1400,t0+0.55);
+      g.gain.setValueAtTime(0.09,t0); g.gain.exponentialRampToValueAtTime(0.001,t0+0.6);
+      o.connect(g); g.connect(ctx.destination); o.start(t0); o.stop(t0+0.65);
+    }catch(e){}
+    const mel=[[523.25,0],[659.25,.22],[783.99,.44],[1046.5,.66,.44],[880,1.10],[783.99,1.32],[880,1.54],[783.99,1.76],[659.25,1.98],[587.33,2.20],[523.25,2.42,.55]];
+    mel.forEach(n=>this.tone(n[0],n[2]||.22,'triangle',.11,.65+n[1]));
+    const bass=[[130.81,0],[98,.44],[110,.88],[87.31,1.32],[98,1.76],[130.81,2.20,.6]];
+    bass.forEach(n=>this.tone(n[0],n[2]||.4,'sine',.08,.65+n[1]));
+  },
   /* Card Click / Selection: an array of fun silly sound generators */
   clickCard(){
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
@@ -2334,6 +2349,7 @@ class UI {
     setTimeout(()=>{ sp.classList.add('show'); setTimeout(()=>sp.classList.remove('show'), 2100); }, 1100);
     setTimeout(()=>{
       const buddy=this.poopFace('wave'); buddy.style.display='block';
+      try{ Sfx.poopFanfare(); }catch(e){}
       beats.forEach((b,i)=> setTimeout(()=>{ this.poopFace(b.face); this.poopSay(b.t, 2000, b.v); }, i*2300));
       const T=beats.length*2300;
       // finale: he declares his love, lunges at the screen, plants a kiss
