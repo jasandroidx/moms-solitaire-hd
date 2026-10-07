@@ -461,9 +461,29 @@ header,#board{position:relative;z-index:3;}
 @keyframes poopPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
 @keyframes poopBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 .poop-buddy.react{animation:poopWiggle .7s ease-in-out;}
+.poop-buddy{transition:right 1.4s ease-in-out,bottom 1.4s ease-in-out;}
+.poop-buddy img{transition:transform .12s;}
+.poop-buddy.blink img{transform:scaleY(.12);}
+.poop-buddy.hop{animation:poopHop .5s ease-in-out,poopBob 3s ease-in-out 1s infinite !important;}
+@keyframes poopHop{0%,100%{margin-bottom:0;}40%{margin-bottom:26px;}}
 @keyframes poopWiggle{0%,100%{transform:rotate(0);}25%{transform:rotate(-14deg) scale(1.08);}50%{transform:rotate(12deg);}75%{transform:rotate(-8deg) scale(1.05);}}
 .poop-bubble{position:fixed;right:96px;bottom:128px;z-index:95;pointer-events:none;background:#fffbe8;color:#4a3418;font-family:Georgia,serif;font-weight:700;font-size:21px;padding:12px 16px;max-width:280px;border-radius:16px;border:2px solid #4a3418;box-shadow:0 4px 12px rgba(0,0,0,.35);opacity:0;transform:scale(.7);transform-origin:bottom right;transition:opacity .8s,transform .5s;}
 .poop-bubble.show{opacity:1;transform:scale(1);}
+/* ---------- Crappy chat box ---------- */
+#chatBtn{position:fixed;right:24px;bottom:170px;z-index:95;width:56px;height:56px;border-radius:50%;border:3px solid #4a3418;background:#fffbe8;font-size:28px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;transition:transform .2s;}
+#chatBtn:hover{transform:scale(1.1);}
+#chatPanel{position:fixed;right:18px;bottom:240px;z-index:96;width:min(340px,90vw);max-height:420px;background:#fffbe8;border:3px solid #4a3418;border-radius:18px;box-shadow:0 8px 30px rgba(0,0,0,.5);display:none;flex-direction:column;overflow:hidden;font-family:Georgia,serif;}
+#chatPanel.open{display:flex;}
+#chatHead{background:#4a3418;color:#ffe9a8;font-size:20px;font-weight:700;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;}
+#chatHead button{background:none;border:none;color:#ffe9a8;font-size:22px;cursor:pointer;}
+#chatLog{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:180px;max-height:280px;}
+.chat-msg{font-size:19px;line-height:1.35;padding:8px 12px;border-radius:14px;max-width:85%;}
+.chat-msg.crappy{background:#f3e2b3;color:#4a3418;align-self:flex-start;border:2px solid #4a3418;}
+.chat-msg.mom{background:#4a3418;color:#ffe9a8;align-self:flex-end;}
+.chat-msg.typing{opacity:.7;font-style:italic;}
+#chatForm{display:flex;gap:8px;padding:10px;border-top:2px solid #4a3418;}
+#chatInput{flex:1;font-size:19px;padding:10px 12px;border-radius:12px;border:2px solid #4a3418;font-family:Georgia,serif;background:#fff;}
+#chatSend{font-size:19px;font-weight:700;padding:10px 16px;border-radius:12px;border:2px solid #4a3418;background:#4a3418;color:#ffe9a8;cursor:pointer;font-family:Georgia,serif;}
 .poop-bubble:after{content:'';position:absolute;right:-8px;bottom:14px;width:14px;height:14px;background:#fffbe8;border-right:2px solid #4a3418;border-bottom:2px solid #4a3418;transform:rotate(-45deg);}
 #intro{position:fixed;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;padding:20px;
   background:rgba(8, 14, 10, 0.78);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);overflow-y:auto;}
@@ -1018,6 +1038,32 @@ const Sfx = {
   /* play an arbitrary audio file by path (voices, one-shots) */
   file(src){ if(this.muted) return; this.ensure(); try{ const a=new Audio(src); const p=a.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} },
   /* Happy Crappy entrance jingle: slide-whistle up + bouncy oom-pah melody, all synth */
+  /* Cartoon fart repertoire — four styles, picked at random. No audio files needed. */
+  _fartBlast(base, dur, flutter, vol, when){
+    const ctx=this.ctx, t0=ctx.currentTime+(when||0);
+    const o=ctx.createOscillator(), g=ctx.createGain(), lfo=ctx.createOscillator(), lg=ctx.createGain();
+    o.type='sawtooth';
+    o.frequency.setValueAtTime(base,t0);
+    o.frequency.linearRampToValueAtTime(Math.max(30,base*0.6),t0+dur);
+    lfo.type='square'; lfo.frequency.setValueAtTime(flutter,t0);
+    lg.gain.setValueAtTime(base*0.5,t0);
+    lfo.connect(lg); lg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(vol,t0+0.03);
+    g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t0); lfo.start(t0); o.stop(t0+dur+0.05); lfo.stop(t0+dur+0.05);
+  },
+  fart(big){
+    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    try{
+      const style=big?2:(Math.random()*4)|0;
+      if(style===0) this._fartBlast(55+Math.random()*45, 0.45+Math.random()*0.25, 28+Math.random()*14, 0.22); // classic wobble
+      else if(style===1) this._fartBlast(140+Math.random()*60, 0.22+Math.random()*0.12, 45+Math.random()*20, 0.16); // squeaky toot
+      else if(style===2) this._fartBlast(40+Math.random()*20, big?1.1:0.8, 18+Math.random()*8, 0.26); // long rumble
+      else { const b=70+Math.random()*40; this._fartBlast(b,0.12,50,0.2,0); this._fartBlast(b*0.9,0.12,50,0.2,0.14); this._fartBlast(b*1.1,0.16,55,0.22,0.28); } // machine-gun
+    }catch(e){}
+  },
   poopFanfare(){
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
     const ctx=this.ctx, t0=ctx.currentTime;
@@ -2182,6 +2228,7 @@ class UI {
     this.stats.games++; store.set('stats',this.stats);
     this._messAnnounce=announce; this._finishing=false;
     this.enterMessy();
+    try{ if(this.poopArrived()){ this.crappyChatInit(); this.poopAmbient(); } }catch(e){}
   }
   enterMessy(){
     // blank the engine so the board renders empty behind the mess
@@ -2299,6 +2346,7 @@ class UI {
   // ---------- Happy Crappy: the poop-emoji familiar ----------
   poopArrived(){ return !!store.get('poop_arrived', false); }
   poopEnsure(){
+    this.crappyChatInit();
     let el=$('#poopbuddy');
     if(!el){
       el=document.createElement('div'); el.id='poopbuddy'; el.className='poop-buddy'; el.style.display='none';
@@ -2331,6 +2379,8 @@ class UI {
       if(typeof fam!=='undefined'&&fam){
         if(!fam.unlocked.includes('poop')) fam.unlocked.push('poop');
         fam.equipped='poop'; fam.firstWin=false; fam.save(); fam.renderBar();
+      try{ if(typeof ui!=='undefined'&&ui) ui.crappyChatUpdate(); }catch(e){}
+      try{ if(typeof ui!=='undefined'&&ui) ui.poopAmbient(); }catch(e){}
       }
     }catch(e){}
     const name=(this.playerName||'Mom').toUpperCase();
@@ -2367,12 +2417,14 @@ class UI {
       ? POOP_FACTS[(Math.random()*POOP_FACTS.length)|0]
       : lines[(Math.random()*lines.length)|0];
     this.whisper('\u{1F4A9} '+line);
+    try{ if(Math.random()<0.15) Sfx.file('assets/voices/poop-uhoh.mp3'); }catch(e){}
     clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 3200);
     // rare brown-streak gag (~5% of moves): a beat after the reaction
     if(Math.random()<0.22) setTimeout(()=>this.poopStreak(), 3400);
   }
   // brown-streak gag: he scoots, leaves fading smears, plays it off
   poopStreak(){
+    try{ Sfx.fart(); }catch(e){}
     if(this.won||this._finishing||!this.poopArrived()) return;
     const buddy=this.poopFace('idle'); buddy.style.display='block';
     buddy.classList.remove('streaking'); void buddy.offsetWidth; buddy.classList.add('streaking');
@@ -2410,6 +2462,128 @@ class UI {
     try{ Sfx.file('sfx/audience-cheer-clap.mp3'); }catch(e){}
   }
   // kiss finale: "I LOVE YOU LAURA! WE ARE GONNA BE BEST FRIENDS!!!" + screen kiss
+  // ---------- Chat with Crappy ----------
+  crappyLines(){
+    return {
+      greeting:["Well hey there, gorgeous! 💩","You came back! *happy wiggle*","Hiya! I was just napping. I'm awake now!","Oh good, it's you! I missed your face."],
+      howareyou:["I'm crappy! ...get it? I'm literally crappy. 😎","Livin' the dream! Well, the toilet dream.","Pretty good for a little poop! You?"],
+      love:["I love you, Laura! We're gonna be best friends! 💛","Aww! *blushes brown* I love you too!","Love you more than... well, than a lot of things!"],
+      joke:["Why did the poop cross the road? ...I forgot. I got distracted. 💩","What do you call a fancy poop? Poo-ding! ...I'll see myself out.","Knock knock! Who's there? ...Poop. Poop who? Exactly."],
+      fart:["Heh. That one wasn't me. ...okay, it was me.","*giggles* Did the ground move for you too?","Excuse me! ...I mean, excuse ME."],
+      poop:["Yep, that's me! A whole poop! Living my best life.","Being a poop is great. Low expectations, high naps.","Did you know? A group of poops is called a... just me. It's just me."],
+      bye:["Don't go! ...okay fine. I'll just nap. 😴","Bye bye! I'll be right here. Where else would I go?","See you soon! I'll guard your cards!"],
+      name:["Laura! Best name I ever heard. And I've heard... uh... one.","Your name's Laura? Mine's Crappy. We're quite the pair!"],
+      win:["WE DID IT! I'm doing the wiggle! 🕺","You're SO good at this! Teach me your ways!","Another win! We're unstoppable, you and me!"],
+      help:["How the hell should I know?? I'm a poop. 💩","Have you tried... moving a card? That's my whole strategy.","Hmm. Lick it and stick it somewhere? That's how I do everything."],
+      sad:["Aw, don't feel bad. Even I have off days. And I'm literally crap.","It's okay! The cards don't define you. I don't define anything. I'm a poop."],
+      thank:["Aww, you're welcome! *happy wiggle*","Anything for you, Laura! 💛"],
+      food:["Ooh, food? Save me a bite? ...actually don't. Trust me.","I had corn once. Never again."],
+      sleep:["Naps are the best. I take, like, twenty a day.","Shhh... I'm sleeping... just kidding! Hi!"],
+      fallback:["Hmm, interesting...","Say that again? I was napping.","You talk funny. I like it.","💩","I'm just a little poop with big opinions.","Ooh, tell me more!","Ha! You're fun.","Wait, what? ...I zoned out. Poop things."]
+    };
+  }
+  crappyReply(text){
+    const t=(text||'').toLowerCase(), L=this.crappyLines();
+    const has=(...ws)=>ws.some(w=>t.includes(w));
+    let bucket='fallback';
+    if(has('hello','hi ','hey','hiya','howdy','good morning','good afternoon')) bucket='greeting';
+    else if(has('how are you',"how're you",'how r u','how do you feel')) bucket='howareyou';
+    else if(has('love','adore','favorite','favourite')) bucket='love';
+    else if(has('joke','funny','laugh','haha')) bucket='joke';
+    else if(has('fart','toot','gas','stink','smell')) bucket='fart';
+    else if(has('poop','crap','turd','doo')) bucket='poop';
+    else if(has('bye','goodbye','good night','goodnight','see you','gotta go')) bucket='bye';
+    else if(has('your name',"what's your name",'who are you','laura')) bucket='name';
+    else if(has('win','won','victory','beat')) bucket='win';
+    else if(has('help','hint','stuck','what do i do')) bucket='help';
+    else if(has('sad','bad','sorry','upset','cry')) bucket='sad';
+    else if(has('thank','thanks','thx')) bucket='thank';
+    else if(has('food','eat','hungry','snack','dinner','lunch')) bucket='food';
+    else if(has('sleep','tired','nap','bed')) bucket='sleep';
+    const pool=L[bucket];
+    // no repeat of last 5
+    this._crapHist=this._crapHist||[];
+    let pick=pool[(Math.random()*pool.length)|0], guard=0;
+    while(this._crapHist.includes(pick)&&guard++<10) pick=pool[(Math.random()*pool.length)|0];
+    this._crapHist.push(pick); if(this._crapHist.length>5) this._crapHist.shift();
+    return pick;
+  }
+  crappyChatInit(){
+    if($('#chatBtn')) return;
+    const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
+    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open');
+      try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
+      if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
+    document.body.appendChild(btn);
+    const panel=document.createElement('div'); panel.id='chatPanel';
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><form id="chatForm"><input id="chatInput" placeholder="Say hi to Crappy..." autocomplete="off" maxlength="120"/><button id="chatSend" type="submit">Send</button></form>';
+    document.body.appendChild(panel);
+    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatForm').onsubmit=(e)=>{ e.preventDefault(); const inp=$('#chatInput'); const v=inp.value.trim(); if(!v) return;
+      inp.value=''; this.crappyChatAdd('mom', v);
+      const tp=this.crappyChatAdd('crappy','...'); tp.classList.add('typing');
+      const buddy=this.poopFace('thinking'); buddy.style.display='block';
+      setTimeout(()=>{ tp.remove(); const reply=this.crappyReply(v); this.crappyChatAdd('crappy', reply);
+        const rl=reply.toLowerCase();
+        try{ if(/love|adore|i love you/.test(v.toLowerCase())){ if(Math.random()<0.4) Sfx.file('assets/voices/poop-myhero.mp3'); } }catch(e){}
+        try{
+          if(/fart|toot|excuse me|oops/.test(rl)){ Sfx.fart(); }
+          else if(/hee hee|giggle|wiggle/.test(rl)&&Math.random()<0.5){ Sfx.file('assets/voices/poop-giggle.mp3'); }
+        }catch(e){}
+        const b=this.poopEnsure(); b.classList.remove('react'); void b.offsetWidth; b.classList.add('react');
+        this.poopFace(Math.random()<0.3?'celebrate':'idle'); }, 700+Math.random()*700); };
+    this.crappyChatUpdate();
+  }
+  crappyChatAdd(who, text){
+    const log=$('#chatLog'); if(!log) return null;
+    const d=document.createElement('div'); d.className='chat-msg '+who; d.textContent=text;
+    log.appendChild(d); log.scrollTop=log.scrollHeight; return d;
+  }
+  crappyChatUpdate(){
+    const btn=$('#chatBtn'); if(!btn) return;
+    const show=this.poopArrived();
+    btn.style.display=show?'flex':'none';
+    if(!show) $('#chatPanel').classList.remove('open');
+  }
+  // ---------- Crappy feels alive: blinks, wanders, smiles, chatters ----------
+  poopAmbient(){
+    if(this._poopAmbient) return; this._poopAmbient=true;
+    const buddy=()=>this.poopEnsure();
+    // blink every 3-7s
+    const blink=()=>{ if(!this.poopArrived()) return;
+      const b=buddy(); if(b.style.display==='block'){ b.classList.add('blink'); setTimeout(()=>b.classList.remove('blink'),140); }
+      setTimeout(blink, 3000+Math.random()*4000); };
+    // wander along the bottom every 25-45s
+    const wander=()=>{ if(!this.poopArrived()) return;
+      const b=buddy();
+      if(b.style.display==='block'&&!document.querySelector('#chatPanel.open')){
+        const w=window.innerWidth;
+        b.style.right=(18+Math.random()*Math.max(60,w*0.45))+'px';
+        b.style.bottom=(64+Math.random()*70)+'px';
+        b.classList.remove('hop'); void b.offsetWidth; b.classList.add('hop');
+        try{ if(Math.random()<0.3) Sfx.file('assets/voices/poop-whee.mp3'); }catch(e){}
+        setTimeout(()=>b.classList.remove('hop'),600);
+      }
+      setTimeout(wander, 25000+Math.random()*20000); };
+    // idle smile: happy face for a moment every 20-35s
+    const smile=()=>{ if(!this.poopArrived()) return;
+      const b=buddy();
+      if(b.style.display==='block'&&b.querySelector('img').dataset.face==='idle'){
+        this.poopFace('celebrate');
+        clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>{ if(b.querySelector('img').dataset.face==='celebrate') this.poopFace('idle'); },2200);
+      }
+      setTimeout(smile, 20000+Math.random()*15000); };
+    // random chatter every 50-100s — quiet little asides in his bubble
+    const lines=["La la la... 🎵","This is nice.","I like watching you play.","*happy sigh*","You're doing great, by the way.","I wonder what's for dinner...","*sniff* ...do I smell like roses?","Being your buddy is the best.","Don't mind me, just vibin'.","I love it here."];
+    const chatter=()=>{ if(!this.poopArrived()) return;
+      const b=buddy();
+      if(b.style.display==='block'&&!document.querySelector('#chatPanel.open')&&Math.random()<0.7){
+        const pick=lines[(Math.random()*lines.length)|0];
+        this.poopSay(pick, 2600);
+      }
+      setTimeout(chatter, 50000+Math.random()*50000); };
+    setTimeout(blink,2500); setTimeout(wander,12000); setTimeout(smile,9000); setTimeout(chatter,30000);
+  }
   poopKiss(name){
     const buddy=this.poopFace('idle'); buddy.style.display='block';
     this.poopSay('I LOVE YOU '+name+'! WE ARE GONNA BE BEST FRIENDS!!!', 2600, 'assets/voices/poop-kiss.mp3');
@@ -2537,6 +2711,7 @@ class UI {
     const hadPoop=this.poopArrived();
     this.unlockPoop(); // Happy Crappy arrives (first win ever; self-gated)
     if(hadPoop){ this.poopFace('celebrate'); this.poopParty(); clearTimeout(this._poopWinT); this._poopWinT=setTimeout(()=>this.poopFace('idle'), 6000); }
+    if(hadPoop){ try{ Sfx.file('assets/voices/'+(Math.random()<0.5?'poop-woohoo.mp3':'poop-yay.mp3')); }catch(e){} }
     // bonus video after first win: disabled for now (win shows only)
     if(this.theme==='aquarium') setTimeout(()=>Vox.play('whale'), 1400); // 🐋 a whale sings for her victory
     let winMsg = `${this.tick()} · ${moves} moves · Draw ${this.drawCount}`;
