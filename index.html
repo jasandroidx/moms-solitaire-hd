@@ -2042,6 +2042,12 @@ class Familiar {
       bar.appendChild(d);
     });
     bar.classList.toggle('show',this.equipped!==null);
+    this.updateVisibility();
+  }
+  // the whole pet corner stays hidden until the first familiar is unlocked (no spoilers)
+  updateVisibility(){
+    const wrap=$('#famWrap'); if(!wrap) return;
+    wrap.style.display = this.unlocked.length>0 ? '' : 'none';
   }
   initUI(){
     const wrap=document.createElement('div'); wrap.id='famWrap';
@@ -2282,6 +2288,8 @@ class UI {
       const buddy=this.poopFace('wave'); buddy.style.display='block';
       lines.forEach((ln,i)=> setTimeout(()=>{ this.poopFace(i===0?'wave':'idle'); this.poopSay(ln, 2000); }, i*2300));
       setTimeout(()=>this.poopFace('idle'), lines.length*2300+500);
+      // grand-reveal explanation beat: what this thing is and where it lives now
+      setTimeout(()=>this.poopSay("I'm your familiar! Tap the paw to visit me anytime!", 2800), lines.length*2300+900);
     }, 2500);
   }
   poopReact(){
