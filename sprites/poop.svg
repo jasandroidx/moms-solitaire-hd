@@ -1,0 +1,28 @@
+<!-- Poop emoji familiar — SNES-style pixel art sprite -->
+<!-- 32x32px, chunky pixels like SNES resolution -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <defs>
+    <linearGradient id="poopGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c8a840"/>
+      <stop offset="100%" stop-color="#8a6a20"/>
+    </linearGradient>
+  </defs>
+  <!-- body — classic poop shape -->
+  <path d="M6 8 Q6 4 10 4 L22 4 Q26 4 26 8 L26 20 Q26 26 22 26 L10 26 Q6 26 6 20 Z" fill="url(#poopGrad)" stroke="#5a4010" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- shine -->
+  <ellipse cx="11" cy="12" rx="4" ry="2" fill="rgba(255,255,255,0.3)" transform="rotate(-15 11 12)"/>
+  <!-- eyes -->
+  <ellipse cx="14" cy="14" rx="2" ry="2.5" fill="#333"/>
+  <ellipse cx="20" cy="14" rx="2" ry="2.5" fill="#333"/>
+  <!-- eye shine -->
+  <circle cx="15" cy="13" r="0.8" fill="#fff"/>
+  <circle cx="21" cy="13" r="0.8" fill="#fff"/>
+  <!-- mouth — happy -->
+  <path d="M13 18 Q16 21 19 18" fill="none" stroke="#333" stroke-width="1.2" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="11" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>
+  <circle cx="21" cy="17" r="1.5" fill="#c0a050" opacity="0.5"/>
+  <!-- little legs -->
+  <rect x="10" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>
+  <rect x="19" y="26" width="3" height="4" rx="1" fill="#8a6a20"/>
+</svg>
