@@ -453,6 +453,11 @@ header,#board{position:relative;z-index:3;}
 @keyframes poopRainbow{0%{transform:scale(0) rotate(-10deg);opacity:0;}20%{opacity:1;}55%{transform:scale(1.1) rotate(5deg);opacity:1;}100%{transform:scale(1) rotate(0);opacity:0;}}
 .poop-star{position:absolute;font-size:20px;opacity:0;animation:poopStarFloat 1.9s ease-out forwards;}
 @keyframes poopStarFloat{0%{transform:translateY(10px) scale(.4);opacity:0;}25%{opacity:1;}100%{transform:translateY(-90px) scale(1.25);opacity:0;}}
+/* kiss finale: he lunges at the screen, plants one, leaves a brown lipstick mark */
+.poop-buddy.kiss-lunge{animation:poopLunge 2.4s ease-in-out forwards;}
+@keyframes poopLunge{0%{transform:scale(1);}40%{transform:scale(2.6) translate(-28vw,-18vh) rotate(-6deg);}70%{transform:scale(3.2) translate(-30vw,-20vh) rotate(4deg);}100%{transform:scale(1);}}
+.poop-kiss{position:fixed;left:50%;top:36%;z-index:96;pointer-events:auto;cursor:pointer;font-size:120px;line-height:1;transform:translate(-50%,-50%) rotate(-12deg) scale(0);filter:sepia(1) saturate(2.5) hue-rotate(-20deg) brightness(.62);opacity:0;transition:transform .35s cubic-bezier(.2,1.6,.4,1),opacity .35s;}
+.poop-kiss.show{transform:translate(-50%,-50%) rotate(-12deg) scale(1);opacity:.92;}
 @keyframes poopPop{0%{transform:scale(0) rotate(-30deg);opacity:0;}100%{transform:scale(1) rotate(0);opacity:1;}}
 @keyframes poopBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
 .poop-buddy.react{animation:poopWiggle .7s ease-in-out;}
@@ -1010,6 +1015,8 @@ const Sfx = {
     const base = 600 + Math.random()*120;
     this.tone(base, .06, 'triangle', .08);
   },
+  /* play an arbitrary audio file by path (voices, one-shots) */
+  file(src){ if(this.muted) return; this.ensure(); try{ const a=new Audio(src); const p=a.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} },
   /* Card Click / Selection: an array of fun silly sound generators */
   clickCard(){
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
@@ -2295,8 +2302,9 @@ class UI {
     if(img&&img.dataset.face!==state){ img.dataset.face=state; img.src='assets/familiars/poop-'+state+'.png'; }
     return buddy;
   }
-  poopSay(text, ms){
+  poopSay(text, ms, voice){
     const buddy=this.poopEnsure(); buddy.style.display='block';
+    if(voice){ try{ Sfx.file(voice); }catch(e){} }
     let b=$('#poopbubble');
     if(!b){ b=document.createElement('div'); b.id='poopbubble'; b.className='poop-bubble'; document.body.appendChild(b); }
     b.textContent=text; b.classList.add('show');
@@ -2313,17 +2321,25 @@ class UI {
       }
     }catch(e){}
     const name=(this.playerName||'Mom').toUpperCase();
-    const lines=['HELLO '+name+'!','CAN WE BEST FRIENDS?!','I LOVE YOUUUUUU!!','Man, I feel like crap!'];
+    const beats=[
+      {t:'HELLO '+name+'!', v:'assets/voices/poop-hello.mp3', face:'wave'},
+      {t:'CAN WE BEST FRIENDS?!', v:'assets/voices/poop-bestfriends.mp3', face:'idle'},
+      {t:'I LOVE YOUUUUUU!!', v:'assets/voices/poop-loveyou.mp3', face:'idle'},
+      {t:'Man, I feel like crap!', v:'assets/voices/poop-feelcrap.mp3', face:'idle'},
+    ];
     // unlock splash, then the wave-hello arrival
     let sp=$('#poopsplash');
     if(!sp){ sp=document.createElement('div'); sp.id='poopsplash'; sp.className='poop-splash'; sp.innerHTML='<span>What a piece of shit.</span>'; document.body.appendChild(sp); }
     setTimeout(()=>{ sp.classList.add('show'); setTimeout(()=>sp.classList.remove('show'), 2100); }, 1100);
     setTimeout(()=>{
       const buddy=this.poopFace('wave'); buddy.style.display='block';
-      lines.forEach((ln,i)=> setTimeout(()=>{ this.poopFace(i===0?'wave':'idle'); this.poopSay(ln, 2000); }, i*2300));
-      setTimeout(()=>this.poopFace('idle'), lines.length*2300+500);
+      beats.forEach((b,i)=> setTimeout(()=>{ this.poopFace(b.face); this.poopSay(b.t, 2000, b.v); }, i*2300));
+      const T=beats.length*2300;
+      // finale: he declares his love, lunges at the screen, plants a kiss
+      setTimeout(()=>this.poopKiss(name), T+400);
       // grand-reveal explanation beat: what this thing is and where it lives now
-      setTimeout(()=>this.poopSay("I'm your familiar! Tap the paw to visit me anytime!", 2800), lines.length*2300+900);
+      setTimeout(()=>this.poopSay("I'm your familiar! Tap the paw to visit me anytime!", 2800, 'assets/voices/poop-familiar.mp3'), T+7600);
+      setTimeout(()=>this.poopFace('idle'), T+7900);
     }, 2500);
   }
   poopReact(){
@@ -2357,8 +2373,8 @@ class UI {
       document.body.appendChild(s);
       setTimeout(()=>s.remove(), 8200);
     }
-    try{ Sfx.play('boing.mp3'); }catch(e){}
-    setTimeout(()=>this.poopSay('...oops!', 1800), 700);
+    try{ Sfx.file('sfx/boing.mp3'); }catch(e){}
+    setTimeout(()=>this.poopSay('...oops!', 1800, 'assets/voices/poop-oops.mp3'), 700);
   }
   // rainbow + star burst behind him (win celebration, like the concept video)
   poopParty(){
@@ -2377,7 +2393,22 @@ class UI {
     }
     buddy.appendChild(fx);
     setTimeout(()=>{ if(fx.isConnected) fx.remove(); }, 2600);
-    try{ Sfx.play('audience-cheer-clap.mp3'); }catch(e){}
+    try{ Sfx.file('sfx/audience-cheer-clap.mp3'); }catch(e){}
+  }
+  // kiss finale: "I LOVE YOU LAURA! WE ARE GONNA BE BEST FRIENDS!!!" + screen kiss
+  poopKiss(name){
+    const buddy=this.poopFace('idle'); buddy.style.display='block';
+    this.poopSay('I LOVE YOU '+name+'! WE ARE GONNA BE BEST FRIENDS!!!', 2600, 'assets/voices/poop-kiss.mp3');
+    buddy.classList.remove('kiss-lunge'); void buddy.offsetWidth; buddy.classList.add('kiss-lunge');
+    setTimeout(()=>{
+      buddy.classList.remove('kiss-lunge');
+      let k=document.getElementById('poopkiss');
+      if(!k){ k=document.createElement('div'); k.id='poopkiss'; k.className='poop-kiss'; k.textContent='\u{1F48B}'; k.title='click to wipe off'; k.onclick=()=>k.remove(); document.body.appendChild(k); }
+      else k.style.display='block';
+      k.classList.remove('show'); void k.offsetWidth; k.classList.add('show');
+      setTimeout(()=>{ if(k.isConnected){ k.classList.remove('show'); setTimeout(()=>k.remove(), 700); } }, 6000);
+      this.poopFace('idle');
+    }, 2400);
   }
   commentate(kind, card){
     if(!CUSTOM.commentator) return;
@@ -3386,7 +3417,7 @@ class UI {
       document.body.classList.add('deep-sleep');
       Sfx.lullaby();
       this.say("The table fell fast asleep... 😴💤");
-      if(this.poopArrived()){ this.poopFace('sleep'); setTimeout(()=>this.poopSay("I'm pooped out...", 2600), 1200); } // Happy Crappy nap
+      if(this.poopArrived()){ this.poopFace('sleep'); setTimeout(()=>this.poopSay("I'm pooped out...", 2600, 'assets/voices/poop-pooped.mp3'), 1200); } // Happy Crappy nap
     }
     if(this.idleStage>=2) {
       this.pickSurprise(true);
