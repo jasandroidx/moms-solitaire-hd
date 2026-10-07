@@ -3394,12 +3394,15 @@ class UI {
         }
       };
     }
-    $('#bHelp').onclick=()=>$('#help').classList.add('show');
-    $('#bCloseHelp').onclick=()=>$('#help').classList.remove('show');
+    const openHelp = () => { $('#help').classList.add('show'); $('#bCloseHelp').focus(); };
+    const closeHelp = () => { if($('#help').classList.contains('show')) { $('#help').classList.remove('show'); $('#bHelp').focus(); } };
+    $('#bHelp').onclick = openHelp;
+    $('#bCloseHelp').onclick = closeHelp;
+    $('#help').addEventListener('click', e => { if (e.target.id === 'help') closeHelp(); });
     document.addEventListener('keydown',e=>{
       if(e.target.tagName==='INPUT') return;
       if(e.key==='Escape'){
-        if($('#help').classList.contains('show')) $('#help').classList.remove('show');
+        closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
         return;
       }
