@@ -4525,13 +4525,20 @@ function initFx(){
     else { nextStar=1e15; shot=null; }
   };
   const calm=matchMedia('(prefers-reduced-motion: reduce)');
-  let t=0;
-  (function loop(){ t+=.016; const now=performance.now(); cx.clearRect(0,0,W,H);
+  let t=0, wasDrawn=false;
+  (function loop(){ t+=.016; const now=performance.now();
     const ui=window.ui;
     const scene=document.body.dataset.scene||'';
-    if(scene==='night' && !calm.matches){
-      if(!shot && now>nextStar){ launchStar(now); nextStar=now+150000+Math.random()*90000; }
-      if(shot){
+    const isNight = scene==='night' && !calm.matches;
+    if(isNight && !shot && now>nextStar){ launchStar(now); nextStar=now+150000+Math.random()*90000; }
+    const isNightShot = isNight && !!shot;
+    const isOceanSpout = scene==='ocean' && Distant.spout && !calm.matches && ((now-Distant.spout)/4200 >= 0 && (now-Distant.spout)/4200 <= 1);
+    const isSparkles = ui && ui.sparkles && !calm.matches && !scene;
+    const hasActiveFx = isNightShot || isOceanSpout || isSparkles;
+
+    if(hasActiveFx || wasDrawn){
+      cx.clearRect(0,0,W,H);
+      if(isNightShot){
         const p=(now-shot.t0)/shot.dur;
         if(p>=1) shot=null;
         else {
@@ -4548,10 +4555,8 @@ function initFx(){
           cx.fillStyle=`rgba(255,255,255,${a})`;
           cx.beginPath(); cx.arc(hx,hy,2.6,0,6.28); cx.fill();
         }
-      }
-    } else if(scene==='ocean' && Distant.spout && !calm.matches){
-      const age=(now-Distant.spout)/4200;
-      if(age>=0 && age<=1){
+      } else if(isOceanSpout){
+        const age=(now-Distant.spout)/4200;
         const a=Math.sin(age*Math.PI);
         const x=W*0.58, y=H*0.34;
         cx.save();
@@ -4565,14 +4570,16 @@ function initFx(){
         cx.quadraticCurveTo(x+18, y-24*age, x+8, y-40*age);
         cx.stroke();
         cx.restore();
+      } else if(isSparkles){
+        for(const p of ps){ p.y-=p.v; p.x+=Math.sin(t+p.ph)*.4;
+          if(p.y<-30) Object.assign(p,spawn());
+          if(p.g){ cx.globalAlpha=p.a; cx.font=p.s+'px serif'; cx.fillText(p.g,p.x,p.y); }
+          else { cx.globalAlpha=p.a; cx.fillStyle='#ffe7b8'; cx.beginPath(); cx.arc(p.x,p.y,p.s,0,6.28); cx.fill(); } }
       }
-    } else if(ui&&ui.sparkles&&!calm.matches&&!scene){
-      for(const p of ps){ p.y-=p.v; p.x+=Math.sin(t+p.ph)*.4;
-        if(p.y<-30) Object.assign(p,spawn());
-        if(p.g){ cx.globalAlpha=p.a; cx.font=p.s+'px serif'; cx.fillText(p.g,p.x,p.y); }
-        else { cx.globalAlpha=p.a; cx.fillStyle='#ffe7b8'; cx.beginPath(); cx.arc(p.x,p.y,p.s,0,6.28); cx.fill(); } }
+      cx.globalAlpha=1;
+      wasDrawn = hasActiveFx;
     }
-    cx.globalAlpha=1; requestAnimationFrame(loop); })();
+    requestAnimationFrame(loop); })();
 }
 document.addEventListener('DOMContentLoaded',()=>{ window.ui=new UI(); initFx(); });
 /* PWA: register the offline shell worker when served over http(s). file:// just skips it. */
