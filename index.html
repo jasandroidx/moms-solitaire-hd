@@ -2859,7 +2859,10 @@ class UI {
       winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
     }
     $('#winstats').textContent=winMsg;
-    setTimeout(()=>$('#winoverlay').classList.add('show'),900);
+    setTimeout(()=>{
+      $('#winoverlay').classList.add('show');
+      $('#bAgain').focus();
+    },900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
   }
@@ -3309,7 +3312,7 @@ class UI {
     paintW();
     bW.onclick=()=>{ Sfx.click(); this.winnableDeal=!this.winnableDeal; store.set('winnableDeal',this.winnableDeal);
       paintW(); this.say(this.winnableDeal?'Winnable deals ON — every hand will be beatable.':'Winnable deals OFF.'); };
-    $('#bAgain').onclick=()=>{Sfx.click();this.newGame();};
+    $('#bAgain').onclick=()=>{Sfx.click();$('#winoverlay').classList.remove('show');this.newGame();$('#bDeal').focus();};
     $('#bUndo').onclick=()=>{ if(this.eng.undo()){Sfx.click();this.view.selected=null;
       this.undoCount=(this.undoCount||0)+1;
       const sass=CUSTOM.undoSass||[];
@@ -3356,7 +3359,11 @@ class UI {
       if(document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen();
     }catch(e){} };
-      document.addEventListener('fullscreenchange',()=>{ bf.textContent=document.fullscreenElement?'✕':'⛶'; });
+      document.addEventListener('fullscreenchange',()=>{
+        const isFS=!!document.fullscreenElement;
+        bf.textContent=isFS?'✕':'⛶';
+        bf.setAttribute('aria-pressed', isFS?'true':'false');
+      });
     }
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
@@ -3396,14 +3403,17 @@ class UI {
     }
     const openHelp = () => { $('#help').classList.add('show'); $('#bCloseHelp').focus(); };
     const closeHelp = () => { if($('#help').classList.contains('show')) { $('#help').classList.remove('show'); $('#bHelp').focus(); } };
+    const closeWin = () => { if($('#winoverlay').classList.contains('show')) { $('#winoverlay').classList.remove('show'); $('#bDeal').focus(); } };
     $('#bHelp').onclick = openHelp;
     $('#bCloseHelp').onclick = closeHelp;
     $('#help').addEventListener('click', e => { if (e.target.id === 'help') closeHelp(); });
+    $('#winoverlay').addEventListener('click', e => { if (e.target.id === 'winoverlay') closeWin(); });
     document.addEventListener('keydown',e=>{
       if(e.target.tagName==='INPUT') return;
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        closeWin();
         return;
       }
       const k=e.key.toLowerCase();
