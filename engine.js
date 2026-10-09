@@ -398,18 +398,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
     return opp.every(s => f[s].length && top(f[s]).rank >= need);
   };
-  const canT = (seq, col) => {
-    if (!seq.length) return false;
-    const first = seq[0];
+  const canTCard = (first, col) => {
+    if (!first) return false;
     if (!col.length) return first.rank === 13;
     const t = top(col);
     return t.faceUp && t.red !== first.red && t.rank === first.rank + 1;
   };
-  const movSeq = col => {
+  const movSeqStart = col => {
     let i = col.length - 1;
     while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
            col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
-    return (col[i] && col[i].faceUp) ? col.slice(i) : [];
+    return (i >= 0 && col[i] && col[i].faceUp) ? i : -1;
   };
   const revealTop = col => {
     if (col.length && !top(col).faceUp) {
@@ -495,11 +494,12 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     for (let a = 0; a < 7; a++) { // tableau -> tableau
       const col = cur.tableau[a]; if (!col.length) continue;
-      const seq = movSeq(col); if (!seq.length) continue;
-      const rs = col.length - seq.length, exposes = rs > 0 && !col[rs - 1].faceUp;
+      const rs = movSeqStart(col); if (rs === -1) continue;
+      const first = col[rs];
+      const exposes = rs > 0 && !col[rs - 1].faceUp;
       for (let b = 0; b < 7; b++) {
-        if (a === b || !canT(seq, cur.tableau[b])) continue;
-        if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
+        if (a === b || !canTCard(first, cur.tableau[b])) continue;
+        if (first.rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
         revealTop(n.tableau[a]);
@@ -509,7 +509,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     if (cur.waste.length) { // waste -> tableau
       const w = top(cur.waste);
       for (let b = 0; b < 7; b++) {
-        if (!canT([w], cur.tableau[b])) continue;
+        if (!canTCard(w, cur.tableau[b])) continue;
         const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); moves.push([6, n]);
       }
     }
