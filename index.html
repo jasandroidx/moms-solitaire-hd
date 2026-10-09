@@ -918,6 +918,7 @@ body.deep-sleep #felt {
   <button class="btn" id="bScenery">Scenery</button>
   <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
   <button class="btn" id="bMusic" aria-pressed="true">Music</button>
+  <button class="btn sm" id="bDemo" title="Demo first win (Jason)" aria-label="Demo first win">🎬</button>
   <button class="btn" id="bRandom" title="Random theme" aria-label="Random theme">🎲</button>
   <button class="btn" id="bHelp">Help</button>
   <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
@@ -3353,6 +3354,9 @@ class UI {
       $('#bMusic').textContent=this.musicOn?'Music':'Music off';
       $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
       if(this.musicOn){ Sfx.ensure(); Music.start(); Sfx.click(); } else Music.stop(); };
+    // demo button (Jason): one tap deals a one-card win to watch the first-win arrival.
+    // confirm-gated so an accidental tap by Mom is harmless.
+    $('#bDemo').onclick=()=>{ if(confirm('Deal a one-card demo win? This resets the poop buddy save so you can watch the first-win arrival.')) this.demoWin(); };
     $('#bMusic').textContent=this.musicOn?'Music':'Music off';
     $('#bMusic').setAttribute('aria-pressed', this.musicOn?'true':'false');
     // corner radio: plain on/off; when it starts, the music-box tune steps aside
