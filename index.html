@@ -927,7 +927,7 @@ body.deep-sleep #felt {
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
 <button id="bFull" title="Fullscreen on/off" aria-label="Fullscreen on/off">⛶</button>
-<div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
+<div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="Close horoscope">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
   <div id="toprow">
@@ -2578,13 +2578,14 @@ class UI {
   }
   crappyChatInit(){
     if($('#chatBtn')) return;
-    const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
+    const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy'; btn.setAttribute('aria-label','Chat with Crappy');
     btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
       if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role','dialog'); panel.setAttribute('aria-modal','true'); panel.setAttribute('aria-label','Chat with Crappy');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
     $('#chatClose').onclick=()=>panel.classList.remove('open');
     this.crappyChatBuild();
@@ -3404,6 +3405,7 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const cp=$('#chatPanel'); if(cp&&cp.classList.contains('open')) cp.classList.remove('open');
         return;
       }
       const k=e.key.toLowerCase();
