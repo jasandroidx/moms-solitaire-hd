@@ -2406,11 +2406,9 @@ class UI {
     }catch(e){}
     const name=(this.playerName||'Mom').toUpperCase();
     const beats=[
+      // first-win arrival stays short on purpose (Jason 2026-10-09): hello, the name gag, the kiss.
       {t:'HELLO '+name+'!', v:'assets/voices/poop-hello.mp3', face:'wave'},
       {t:"I'M CRAPPY! ...like, literally.", v:'assets/voices/poop-imcrappy.mp3', face:'celebrate'},
-      {t:'CAN WE BEST FRIENDS?!', v:'assets/voices/poop-bestfriends.mp3', face:'idle'},
-      {t:'I LOVE YOUUUUUU!!', v:'assets/voices/poop-loveyou.mp3', face:'idle'},
-      {t:'Man, I feel like crap!', v:'assets/voices/poop-feelcrap.mp3', face:'idle'},
     ];
     // unlock splash, then the wave-hello arrival
     let sp=$('#poopsplash');
@@ -2421,11 +2419,8 @@ class UI {
       try{ Sfx.crappyTheme(); }catch(e){}
       beats.forEach((b,i)=> setTimeout(()=>{ this.poopFace(b.face); this.poopSay(b.t, 2600, b.v); }, i*2300));
       const T=beats.length*2300;
-      // finale: he declares his love, lunges at the screen, plants a kiss
+      // finale: the poop kiss (it resolves itself: lunge, kiss mark, back to idle)
       setTimeout(()=>this.poopKiss(name), T+400);
-      // grand-reveal explanation beat: what this thing is and where it lives now
-      setTimeout(()=>this.poopSay("I'm your familiar! Tap the paw to visit me anytime!", 2800, 'assets/voices/poop-familiar.mp3'), T+7600);
-      setTimeout(()=>this.poopFace('idle'), T+7900);
     }, 2500);
   }
   /* Hidden demo command (Jason only — Mom never opens devtools):
