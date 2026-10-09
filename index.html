@@ -1109,14 +1109,7 @@ const Sfx = {
         g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.06);
         o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.07);
       },
-      // 2. Springy Boing
-      ()=>{
-        const o=ctx.createOscillator(), g=ctx.createGain();
-        o.type='triangle'; o.frequency.setValueAtTime(650, t);
-        o.frequency.exponentialRampToValueAtTime(320, t+0.08);
-        g.gain.setValueAtTime(0.1, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.09);
-        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.1);
-      },
+
       // 3. Wood Knock
       ()=>{
         const o=ctx.createOscillator(), g=ctx.createGain();
@@ -1293,15 +1286,6 @@ const Sfx = {
     if(this.muted) return; this.ensure(); if(!this.ctx) return;
     const sounds = [
       ()=> this.fart(),
-      // Sad Boing Down
-      ()=>{
-        const ctx=this.ctx, t=ctx.currentTime;
-        const o=ctx.createOscillator(), g=ctx.createGain();
-        o.type='sawtooth'; o.frequency.setValueAtTime(420, t);
-        o.frequency.exponentialRampToValueAtTime(80, t+0.25);
-        g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t+0.26);
-        o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t+0.27);
-      },
       // Wobble Buzz
       ()=>{
         const ctx=this.ctx, t=ctx.currentTime;
@@ -1795,22 +1779,21 @@ const CUSTOM = {
     hint: 'youre-the-smartest-person-in-the-room-right-now.mp3', // she asks for a hint
     win: 'wow-m.mp3',                                            // she wins the whole game
     idle: ['whatistheholdup.mp3','impatient-bender.mp3','Times_up.mp3'], // escalating idle nags
-    boing: 'boing.mp3',                    // the Play button flees
     cantTouch: 'cant-touch-this.mp3',     // Play button chase, 2nd try: 🎵 can't touch this!
     quicker: 'quicker-than-that.mp3',    // Play button chase, 3rd try: ohhh, you gotta be quicker than that
     ace: 'aceofspades.mp3',              // she turns over the ace of spades ♠
     kingHearts: 'king-nothing.mp3',      // FIRST king of hearts flip per game — 👑 nothing
     wiggle: 'goofy-spring-bounces.mp3',   // cards wiggle when she's idle
-    rareCard: 'boing.mp3',           // VERY rare gag when she clicks a card
+    rareCard: 'clown-horn.mp3',      // VERY rare gag when she clicks a card
     rareCardChance: 0.006,                // 0.6% + 5-min cooldown — genuinely rare
     whale: 'whale.mp3',                  // 🐋 aquarium table: win celebration + rare idle call (freesound.org/people/muri_kuri/sounds/684188 — CC license, recheck before public release)
     march: 'marching-band.mp3',            // win marching-band show — Jason supplies the mp3; synth drum cadence is the bed until then
     conga: 'conga.mp3',                    // win conga line — real conga music (Jason's file); synth groove is the fallback
-    cardPlace: ['card-place.mp3', 'boing.mp3'],
+    cardPlace: ['card-place.mp3'],
     dealWhoosh: ['deal-whoosh.mp3', 'goofy-spring-bounces.mp3'],
-    sillyClick: ['boing.mp3', 'wow-m.mp3'],
+    sillyClick: ['wow-m.mp3'],
     sillyPlace: ['card-place.mp3', 'crowd-ooooh.mp3', 'crowd-aaaah.mp3', 'audience-cheer-clap.mp3'],
-    illegal: ['boing.mp3'],
+    illegal: ['clown-horn.mp3'],
   },
   ambience: true, // table soundscapes: summer rain on the cabin table, underwater wash on the aquarium (synthesized, no files)
   winShow: 'random', // win celebration: 'random' or force one — 'conga','walkaway','antigrav','trailer','cardnado','fountain','fireworks','jackpot','march'
@@ -1836,8 +1819,8 @@ const CUSTOM = {
   },
   sounds: {
     poop: {
-      plop: ['boing.mp3', 'card-place.mp3'],
-      squeak: ['boing.mp3'],
+      plop: ['card-place.mp3'],
+      squeak: ['wow-m.mp3'],
       happy: ['wow-m.mp3'],
       win: ['audience-cheer-clap.mp3'],
       idle: ['goofy-spring-bounces.mp3'],
@@ -2444,6 +2427,29 @@ class UI {
       setTimeout(()=>this.poopFace('idle'), T+7900);
     }, 2500);
   }
+  /* Hidden demo command (Jason only — Mom never opens devtools):
+     type ui.demoWin() in the console. Resets the poop save and deals a
+     one-card win so you can watch the first-win arrival without playing
+     a full game. Drag the king to the top pile (or tap it, then tap the pile). */
+  demoWin(){
+    try{
+      ['ms_poop_arrived','ms_fam_unlocked','ms_fam_equipped','ms_fam_firstWin','ms_fam_xp','ms_fam_lvl'].forEach(k=>{ try{localStorage.removeItem(k);}catch(e){} });
+      ['poopbuddy','poopbubble','poopsplash','poopkiss','poopsplash2'].forEach(id=>{const e=document.getElementById(id); if(e) e.remove();});
+      const cp=document.getElementById('chatPanel'); if(cp) cp.classList.add('hidden');
+      const cb=document.getElementById('chatBtn'); if(cb) cb.style.display='none';
+      const fw=document.getElementById('famWrap'); if(fw) fw.style.display='none';
+      if(typeof fam!=='undefined'&&fam){ fam.unlocked=[]; fam.equipped=null; fam.firstWin=true; fam.xp={poop:0}; fam.lvl={poop:1}; fam.save(); fam.renderBar(); }
+      this.won=false; this._finishing=false;
+      const wo=document.getElementById('winoverlay'); if(wo) wo.classList.remove('show');
+      let id=0; const mk=(s,r)=>({id:id++,suit:s,rank:r,red:(s==='hearts'||s==='diamonds'),faceUp:true});
+      ['hearts','diamonds','clubs'].forEach(s=>{ this.eng.state.foundations[s]=[]; for(let r=1;r<=13;r++) this.eng.state.foundations[s].push(mk(s,r)); });
+      this.eng.state.foundations['spades']=[]; for(let r=1;r<=12;r++) this.eng.state.foundations['spades'].push(mk('spades',r));
+      this.eng.state.tableau=[[],[],[],[],[],[],[]]; this.eng.state.tableau[0]=[mk('spades',13)];
+      this.eng.state.stock=[]; this.eng.state.waste=[];
+      this.view.selected=null; this.view.render(this);
+      this.say('Demo: drag the king of spades to the top pile.');
+    }catch(e){ console.warn('demoWin failed', e); }
+  }
   poopReact(){
     if(this.won||this._finishing||!this.poopArrived()) return;
     if(Math.random()>=0.25) return;
@@ -2505,7 +2511,7 @@ class UI {
       this.poopStainAt(r2.left+r2.width/2, r2.top+r2.height-14, true);
       buddy.style.transition='right 1.4s ease-in-out,bottom 1.4s ease-in-out';
     },600);
-    try{ Sfx.file('sfx/boing.mp3'); }catch(e){}
+    try{ Sfx.file('sfx/card-place.mp3'); }catch(e){}
     setTimeout(()=>this.poopSay('...oops!', 1800, 'assets/voices/poop-oops.mp3'), 700);
   }
   // rainbow + star burst behind him (win celebration, like the concept video)
@@ -2704,7 +2710,7 @@ class UI {
         Sfx.fart(); this.poopFace('surprised');
         this.poopSay('Oops! ...that was me.', 2000, 'assets/voices/poop-oopsie.mp3');
         clearTimeout(this._poopFaceT); this._poopFaceT=setTimeout(()=>this.poopFace('idle'), 2200);
-      }else if(roll<0.7){ // boing bounce
+      }else if(roll<0.7){ // hop bounce
         buddy.classList.remove('hop'); void buddy.offsetWidth; buddy.classList.add('hop');
         Sfx.file('assets/voices/poop-whee.mp3');
         setTimeout(()=>buddy.classList.remove('hop'),600);
@@ -3547,6 +3553,22 @@ class UI {
     const now=Date.now();
     // VERY rare card-click gag: 0.6% chance, max once per 5 minutes
     if(Math.random()<CUSTOM.vox.rareCardChance&&now-(this._lastRare||0)>300000){ this._lastRare=now; Vox.play('rareCard'); }
+    // double tap/click auto-foundation (MUST run before selection handling:
+    // the first tap always selects the card, so checking after meant this never fired)
+    const dtCid = cardEl ? cardEl.dataset.cid : null;
+    if (dtCid && this._lastTapCid === dtCid && (now - (this._lastTapTime || 0)) < 350) {
+      this._lastTapCid = null;
+      if (this.selIsTop(loc)) {
+        const dtr = this.eng.moveToFoundation(loc);
+        if (dtr && dtr.ok) {
+          Sfx.placeCard(true);
+          this.view.selected = null;
+          this.afterMove(cardName(dtr.card) + ' to foundation.');
+          this.commentate('foundation', dtr.card);
+          return;
+        }
+      }
+    }
     // tap with a selection: destination?
     const sel=this.view.selected;
     if(sel){
@@ -3561,22 +3583,7 @@ class UI {
       else { Sfx.bad(); this.view.selected=null; this.view.render(this); this.say('That move is not legal.'); }
       return;
     }
-    // double tap/click auto-foundation check for Chromebook trackpads & touchscreens
-    const cid = cardEl ? cardEl.dataset.cid : null;
-    if (cid && this._lastTapCid === cid && (now - (this._lastTapTime || 0)) < 350) {
-      if (this.selIsTop(loc)) {
-        const r = this.eng.moveToFoundation(loc);
-        if (r && r.ok) {
-          Sfx.placeCard(true);
-          this.view.selected = null;
-          this.afterMove(cardName(r.card) + ' to foundation.');
-          this.commentate('foundation', r.card);
-          this._lastTapCid = null;
-          return;
-        }
-      }
-    }
-    this._lastTapCid = cid;
+    this._lastTapCid = cardEl ? cardEl.dataset.cid : null;
     this._lastTapTime = now;
 
     // no selection: tap selects the movable sequence (R1) — no auto-moves, drag-and-drop only
