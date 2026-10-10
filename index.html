@@ -2581,14 +2581,19 @@ class UI {
   crappyChatInit(){
     if($('#chatBtn')) return;
     const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
-    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
+    btn.setAttribute('aria-label', 'Chat with Crappy');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.onclick=()=>{ const p=$('#chatPanel'); const isOpen=p.classList.toggle('open'); btn.setAttribute('aria-expanded', isOpen?'true':'false'); try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
-      if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
+      if(isOpen&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'Chat with Crappy');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
-    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatClose').onclick=()=>{ panel.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
     this.crappyChatBuild();
     this.crappyChatUpdate();
   }
@@ -3409,6 +3414,11 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const cp=$('#chatPanel');
+        if(cp&&cp.classList.contains('open')){
+          cp.classList.remove('open');
+          const cb=$('#chatBtn'); if(cb) cb.setAttribute('aria-expanded', 'false');
+        }
         return;
       }
       const k=e.key.toLowerCase();
