@@ -4509,11 +4509,13 @@ const FXSETS={ /* ambient floating glyphs swap with the table scene */
 };
 function initFx(){
   const cv=$('#fx'); if(!cv||!cv.getContext) return; const cx=cv.getContext('2d');
-  let W,H; const size=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight; };
+  let W,H,wasCleared=false;
+  const size=()=>{ W=cv.width=innerWidth; H=cv.height=innerHeight; wasCleared=false; };
   size(); addEventListener('resize',size);
   const glyphs=()=>{ const u=window.ui; return (u&&FXSETS[u.theme])||FXSETS.default; };
-  const spawn=()=>{ const gs=glyphs(); return {x:Math.random()*W,y:H+24,s:gs?11+Math.random()*17:1.2+Math.random()*1.8,v:.25+Math.random()*.65,
-    g:gs?gs[Math.random()*gs.length|0]:null,a:.18+Math.random()*.35,ph:Math.random()*6.28}; };
+  const resetParticle=(p)=>{ const gs=glyphs(); p.x=Math.random()*W; p.y=H+24; p.s=gs?11+Math.random()*17:1.2+Math.random()*1.8;
+    p.v=.25+Math.random()*.65; p.g=gs?gs[Math.random()*gs.length|0]:null; p.a=.18+Math.random()*.35; p.ph=Math.random()*6.28; };
+  const spawn=()=>{ const p={}; resetParticle(p); return p; };
   const ps=[]; for(let i=0;i<34;i++){ const p=spawn(); p.y=Math.random()*H; ps.push(p); }
   // table switch reskins the live particles instantly instead of waiting for them to recycle
   let nextStar=performance.now()+22000+Math.random()*18000;
@@ -4529,18 +4531,22 @@ function initFx(){
     const gs=glyphs(); for(const p of ps) p.g=gs?gs[Math.random()*gs.length|0]:null;
     if(window.ui.theme==='night') nextStar=performance.now()+22000+Math.random()*18000;
     else { nextStar=1e15; shot=null; }
+    wasCleared=false;
   };
   const calm=matchMedia('(prefers-reduced-motion: reduce)');
   let t=0;
-  (function loop(){ t+=.016; const now=performance.now(); cx.clearRect(0,0,W,H);
+  (function loop(){ t+=.016; const now=performance.now();
     const ui=window.ui;
     const scene=document.body.dataset.scene||'';
+    let isDrawing=false;
+
     if(scene==='night' && !calm.matches){
       if(!shot && now>nextStar){ launchStar(now); nextStar=now+150000+Math.random()*90000; }
       if(shot){
         const p=(now-shot.t0)/shot.dur;
         if(p>=1) shot=null;
         else {
+          isDrawing=true; cx.clearRect(0,0,W,H); wasCleared=false;
           const e=p*p*(3-2*p);
           const hx=shot.x0+shot.dx*e, hy=shot.y0+shot.dy*e;
           const tail=0.18;
@@ -4558,6 +4564,7 @@ function initFx(){
     } else if(scene==='ocean' && Distant.spout && !calm.matches){
       const age=(now-Distant.spout)/4200;
       if(age>=0 && age<=1){
+        isDrawing=true; cx.clearRect(0,0,W,H); wasCleared=false;
         const a=Math.sin(age*Math.PI);
         const x=W*0.58, y=H*0.34;
         cx.save();
@@ -4573,10 +4580,16 @@ function initFx(){
         cx.restore();
       }
     } else if(ui&&ui.sparkles&&!calm.matches&&!scene){
+      isDrawing=true; cx.clearRect(0,0,W,H); wasCleared=false;
       for(const p of ps){ p.y-=p.v; p.x+=Math.sin(t+p.ph)*.4;
-        if(p.y<-30) Object.assign(p,spawn());
+        if(p.y<-30) resetParticle(p);
         if(p.g){ cx.globalAlpha=p.a; cx.font=p.s+'px serif'; cx.fillText(p.g,p.x,p.y); }
         else { cx.globalAlpha=p.a; cx.fillStyle='#ffe7b8'; cx.beginPath(); cx.arc(p.x,p.y,p.s,0,6.28); cx.fill(); } }
+    }
+
+    if(!isDrawing && !wasCleared){
+      cx.clearRect(0,0,W,H);
+      wasCleared=true;
     }
     cx.globalAlpha=1; requestAnimationFrame(loop); })();
 }
