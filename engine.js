@@ -158,15 +158,20 @@ class GameEngine {
     return this.topOf(f).rank === card.rank - 1;
   }
 
-  // a card is safe to auto-foundation when both opposite-color lower cards are already home
+  // A card is safe to auto-foundation when both opposite-color lower cards are already home.
+  // Optimized to use direct property lookups to avoid allocating temporary arrays
+  // (['spades', 'clubs'] or ['hearts', 'diamonds']) and closure creation on every check.
   isSafeForFoundation(card) {
     if (card.rank <= 2) return true;
     const need = card.rank - 1;
-    const opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
-    return opp.every(s => {
-      const f = this.state.foundations[s];
-      return f.length && this.topOf(f).rank >= need;
-    });
+    const f = this.state.foundations;
+    if (card.red) {
+      const s = f.spades, c = f.clubs;
+      return s.length > 0 && s[s.length - 1].rank >= need && c.length > 0 && c[c.length - 1].rank >= need;
+    } else {
+      const h = f.hearts, d = f.diamonds;
+      return h.length > 0 && h[h.length - 1].rank >= need && d.length > 0 && d[d.length - 1].rank >= need;
+    }
   }
 
   _afterMove() {
