@@ -358,10 +358,6 @@ class GameEngine {
   }
 }
 
-// Pre-allocated static suit arrays for safeF checks to avoid array allocations in hot search loops
-const OPP_SUITS_RED = ['spades', 'clubs'];
-const OPP_SUITS_BLACK = ['hearts', 'diamonds'];
-
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -395,21 +391,23 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
-    return opp.every(s => f[s].length && top(f[s]).rank >= need);
+    const need = card.rank - 1;
+    if (card.red) {
+      return (f.spades.length > 0 && top(f.spades).rank >= need) && (f.clubs.length > 0 && top(f.clubs).rank >= need);
+    } else {
+      return (f.hearts.length > 0 && top(f.hearts).rank >= need) && (f.diamonds.length > 0 && top(f.diamonds).rank >= need);
+    }
   };
-  const canT = (seq, col) => {
-    if (!seq.length) return false;
-    const first = seq[0];
-    if (!col.length) return first.rank === 13;
+  const canT = (card, col) => {
+    if (!col.length) return card.rank === 13;
     const t = top(col);
-    return t.faceUp && t.red !== first.red && t.rank === first.rank + 1;
+    return t.faceUp && t.red !== card.red && t.rank === card.rank + 1;
   };
-  const movSeq = col => {
+  const movSeqStart = col => {
     let i = col.length - 1;
     while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
            col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
-    return (col[i] && col[i].faceUp) ? col.slice(i) : [];
+    return (col[i] && col[i].faceUp) ? i : -1;
   };
   const revealTop = col => {
     if (col.length && !top(col).faceUp) {
@@ -438,11 +436,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
   };
   const won = s => {
-    let f = 0; for (const k of ['spades', 'hearts', 'diamonds', 'clubs']) f += s.foundations[k].length;
-    if (f === 52) return true;
+    const f = s.foundations;
+    if (f.spades.length + f.hearts.length + f.diamonds.length + f.clubs.length === 52) return true;
     // everything free => the game's auto-finish guarantees the win (mirrors canAutoComplete)
     if (s.stock.length || s.waste.length) return false;
-    return s.tableau.every(col => col.every(c => c.faceUp));
+    for (let c = 0; c < 7; c++) {
+      const col = s.tableau[c];
+      for (let i = 0; i < col.length; i++) {
+        if (!col[i].faceUp) return false;
+      }
+    }
+    return true;
   };
 
   // Compact state key generator using String.fromCharCode to encode card IDs (0..51) into single characters.
@@ -495,11 +499,12 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     for (let a = 0; a < 7; a++) { // tableau -> tableau
       const col = cur.tableau[a]; if (!col.length) continue;
-      const seq = movSeq(col); if (!seq.length) continue;
-      const rs = col.length - seq.length, exposes = rs > 0 && !col[rs - 1].faceUp;
+      const rs = movSeqStart(col); if (rs === -1) continue;
+      const card = col[rs];
+      const exposes = rs > 0 && !col[rs - 1].faceUp;
       for (let b = 0; b < 7; b++) {
-        if (a === b || !canT(seq, cur.tableau[b])) continue;
-        if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
+        if (a === b || !canT(card, cur.tableau[b])) continue;
+        if (card.rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
         revealTop(n.tableau[a]);
@@ -509,7 +514,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     if (cur.waste.length) { // waste -> tableau
       const w = top(cur.waste);
       for (let b = 0; b < 7; b++) {
-        if (!canT([w], cur.tableau[b])) continue;
+        if (!canT(w, cur.tableau[b])) continue;
         const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); moves.push([6, n]);
       }
     }
