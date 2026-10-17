@@ -927,7 +927,7 @@ body.deep-sleep #felt {
 <audio id="radioAudio" preload="none"></audio>
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
-<button id="bFull" title="Fullscreen on/off" aria-label="Fullscreen on/off">⛶</button>
+<button id="bFull" title="Fullscreen on/off" aria-label="Fullscreen on/off" aria-pressed="false">⛶</button>
 <div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
@@ -2581,14 +2581,19 @@ class UI {
   crappyChatInit(){
     if($('#chatBtn')) return;
     const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
-    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
+    btn.setAttribute('aria-label','Chat with Crappy'); btn.setAttribute('aria-expanded','false');
+    btn.onclick=()=>{ const p=$('#chatPanel'); const wasOpen=p.classList.contains('open'); p.classList.toggle('open'); btn.setAttribute('aria-expanded', !wasOpen?'true':'false'); try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
-      if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
+      if(p.classList.contains('open')){
+        if(!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); }
+        const input=$('#chatInput'); if(input) input.focus(); else $('#chatClose').focus();
+      }else{ btn.focus(); } };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Chat with Crappy');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
-    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatClose').onclick=()=>{ panel.classList.remove('open'); btn.setAttribute('aria-expanded','false'); btn.focus(); };
     this.crappyChatBuild();
     this.crappyChatUpdate();
   }
@@ -2647,7 +2652,7 @@ class UI {
     const btn=$('#chatBtn'); if(!btn) return;
     const show=this.poopArrived();
     btn.style.display=show?'flex':'none';
-    if(!show) $('#chatPanel').classList.remove('open');
+    if(!show){ $('#chatPanel').classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
   }
   // ---------- Crappy feels alive: blinks, wanders, smiles, chatters ----------
   poopAmbient(){
@@ -2861,7 +2866,7 @@ class UI {
       winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
     }
     $('#winstats').textContent=winMsg;
-    setTimeout(()=>$('#winoverlay').classList.add('show'),900);
+    setTimeout(()=>{ $('#winoverlay').classList.add('show'); $('#bAgain').focus(); },900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
   }
@@ -3361,7 +3366,11 @@ class UI {
       if(document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen();
     }catch(e){} };
-      document.addEventListener('fullscreenchange',()=>{ bf.textContent=document.fullscreenElement?'✕':'⛶'; });
+      document.addEventListener('fullscreenchange',()=>{
+        const isFull = !!document.fullscreenElement;
+        bf.textContent = isFull ? '✕' : '⛶';
+        bf.setAttribute('aria-pressed', isFull ? 'true' : 'false');
+      });
     }
     $('#bRadio').onclick=()=>{ Sfx.click();
       if(!Radio.on) Radio.start(()=>{ this.musicOn=false; store.set('musicOn',false); Music.stop();
@@ -3409,6 +3418,9 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const cp=$('#chatPanel');
+        if(cp && cp.classList.contains('open')){ cp.classList.remove('open'); const cb=$('#chatBtn'); if(cb){ cb.setAttribute('aria-expanded','false'); cb.focus(); } }
+        if($('#winoverlay').classList.contains('show')){ $('#bAgain').click(); }
         return;
       }
       const k=e.key.toLowerCase();
