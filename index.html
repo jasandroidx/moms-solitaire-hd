@@ -907,20 +907,20 @@ body.deep-sleep #felt {
 <div id="room"><div id="rail"><div id="felt">
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
-  <button class="btn" id="bDeal">New Deal</button>
-  <button class="btn" id="bDaily">Daily Deal</button>
-  <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
-  <button class="btn" id="bUndo">Undo</button>
-  <button class="btn" id="bDraw">Draw 1</button>
-  <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
-  <button class="btn" id="bHint">Hint</button>
-  <button class="btn" id="bStyle">Style</button>
-  <button class="btn" id="bScenery">Scenery</button>
-  <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
-  <button class="btn" id="bMusic" aria-pressed="true">Music</button>
+  <button class="btn" id="bDeal" title="New Deal (N)" aria-keyshortcuts="n">New Deal</button>
+  <button class="btn" id="bDaily" title="Start daily deal challenge">Daily Deal</button>
+  <button class="btn" id="bWinnable" title="Toggle strictly winnable deals mode" aria-pressed="false">Winnable: OFF</button>
+  <button class="btn" id="bUndo" title="Undo move (U or Ctrl+Z)" aria-keyshortcuts="u Control+z">Undo</button>
+  <button class="btn" id="bDraw" title="Draw cards (D)" aria-keyshortcuts="d">Draw 1</button>
+  <button class="btn" id="bBig" title="Toggle enlarged cards mode" aria-pressed="false">Big Cards</button>
+  <button class="btn" id="bHint" title="Get a hint or joke (H)" aria-keyshortcuts="h">Hint</button>
+  <button class="btn" id="bStyle" title="Cycle table felt style">Style</button>
+  <button class="btn" id="bScenery" title="Rotate scenery background">Scenery</button>
+  <button class="btn sm" id="bSound" title="Toggle sound effects" aria-pressed="true">SFX</button>
+  <button class="btn" id="bMusic" title="Toggle background music" aria-pressed="true">Music</button>
   <button class="btn sm" id="bDemo" title="Demo first win (Jason)" aria-label="Demo first win">🎬</button>
   <button class="btn" id="bRandom" title="Random theme" aria-label="Random theme">🎲</button>
-  <button class="btn" id="bHelp">Help</button>
+  <button class="btn" id="bHelp" title="How to play">Help</button>
   <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
@@ -2581,14 +2581,26 @@ class UI {
   crappyChatInit(){
     if($('#chatBtn')) return;
     const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
-    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
+    btn.setAttribute('aria-label', 'Chat with Crappy');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.onclick=()=>{
+      const p=$('#chatPanel'); p.classList.toggle('open');
+      const isOpen=p.classList.contains('open');
+      btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+      try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
-      if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
+      if(isOpen&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); }
+    };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Chat with Crappy');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
-    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatClose').onclick=()=>{
+      panel.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    };
     this.crappyChatBuild();
     this.crappyChatUpdate();
   }
@@ -3409,6 +3421,12 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const chatPanel = $('#chatPanel');
+        if(chatPanel && chatPanel.classList.contains('open')) {
+          chatPanel.classList.remove('open');
+          const chatBtn = $('#chatBtn');
+          if(chatBtn) chatBtn.setAttribute('aria-expanded', 'false');
+        }
         return;
       }
       const k=e.key.toLowerCase();
