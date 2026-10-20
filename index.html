@@ -3442,6 +3442,7 @@ class UI {
   }
   startDrag(d){
     d.active=true;
+    this.cacheTargetPiles();
     const layer=$('#draglayer'); layer.innerHTML='';
     // drag the grabbed card and everything below it — not the whole movable run
     let seq;
@@ -3478,13 +3479,38 @@ class UI {
     d.ghosts.forEach((g,i)=>{ g.style.left=(d.r0.left+dx)+'px'; g.style.top=(d.r0.top+i*d.offU+dy)+'px'; });
     this.updateDropHint(d);
   }
+  // Cache pile bounding boxes at start of drag to avoid layout thrashing / DOM query on every pointermove
+  cacheTargetPiles(){
+    this.targetPilesCache = [];
+    document.querySelectorAll('.pile,.tcol').forEach(p=>{
+      if(!p.isConnected) return;
+      const r=p.getBoundingClientRect();
+      this.targetPilesCache.push({ el: p, left: r.left, right: r.right, top: r.top, bottom: r.bottom, cx: r.left + r.width / 2, cy: r.top + r.height / 2 });
+    });
+  }
+  clearTargetPilesCache(){
+    this.targetPilesCache = null;
+    if(this.lastDropOkPile){
+      this.lastDropOkPile.classList.remove('drop-ok');
+      this.lastDropOkPile = null;
+    }
+  }
   updateDropHint(d){
-    document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
     if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
-    // Ordering/connection constraint: ghost element must be connected to DOM before measuring layout
     if(!d.ghosts[0].isConnected) return;
-    const gx=d.ghosts[0].getBoundingClientRect();
-    const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
+    // Fast ghost position check without calling getBoundingClientRect repeatedly if cached
+    const gx = d.r0.left + (d.x - d.x0);
+    const gy = d.r0.top + (d.y - d.y0);
+    const cardW = d.cw || d.r0.width;
+    const cardH = cardW * 1.4;
+    const cx = gx + cardW / 2;
+    const cy = gy + cardH / 2;
+
+    const pile = this.pileAt(cx, cy);
+    if(this.lastDropOkPile && this.lastDropOkPile !== pile){
+      this.lastDropOkPile.classList.remove('drop-ok');
+      this.lastDropOkPile = null;
+    }
     if(!pile) return;
     const z=pile.dataset.zone, card=d.seq[0];
     let ok=false;
@@ -3493,11 +3519,25 @@ class UI {
       const toCol=+pile.dataset.col;
       if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
     }
-    if(ok) pile.classList.add('drop-ok');
+    if(ok){
+      pile.classList.add('drop-ok');
+      this.lastDropOkPile = pile;
+    }
   }
   // forgiving drop targeting: 16px of grace around every pile, nearest center wins
   pileAt(x,y){
     let best=null,bestD=Infinity;
+    const piles = this.targetPilesCache || [];
+    if(piles.length > 0){
+      const pad = 16;
+      for(let i=0; i<piles.length; i++){
+        const p = piles[i];
+        if(x < p.left - pad || x > p.right + pad || y < p.top - pad || y > p.bottom + pad) continue;
+        const dx = x - p.cx, dy = y - p.cy, d = dx * dx + dy * dy;
+        if(d < bestD){ bestD = d; best = p.el; }
+      }
+      return best;
+    }
     document.querySelectorAll('.pile,.tcol').forEach(p=>{
       // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
       if(!p.isConnected) return;
@@ -3522,6 +3562,7 @@ class UI {
     const gx=(d&&d.ghosts&&d.ghosts[0]&&d.ghosts[0].isConnected)?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
+    this.clearTargetPilesCache();
     if(!d) return;
     if(cancelled){ return; } // system-cancelled gesture: drop silently, never convert to a tap
     if(!d.active){ this.onTap(d.el,d.loc); return; }
