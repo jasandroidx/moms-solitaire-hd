@@ -1651,6 +1651,8 @@ class Renderer {
     }
     this.selected=null; // {zone,col} — R1 tap-to-select
     this.hintCard=null;
+    this.cw=0;
+    window.addEventListener('resize', () => { this.cw = 0; }, { passive: true });
   }
   cardEl(card, opts){
     opts=opts||{};
@@ -1694,8 +1696,11 @@ class Renderer {
     // waste: fan last 3
     this.clearPile(this.wasteEl);
     const show=s.waste.slice(-3);
-    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
-    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
+    // Cache layout width to avoid forcing synchronous DOM layout reflow on every render pass
+    if(!this.cw && this.stockEl && this.stockEl.isConnected){
+      this.cw = this.stockEl.offsetWidth || (this.stockEl.getBoundingClientRect ? this.stockEl.getBoundingClientRect().width : 0) || 0;
+    }
+    const cw = this.cw || 96;
     const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});

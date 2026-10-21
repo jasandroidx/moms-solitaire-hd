@@ -9,3 +9,7 @@
 ## 2025-10-03 - Compact State Encoding & Copy-on-Write Card Cloning in DFS Solver
 **Learning:** In graph search algorithms for card games where card properties (`id`, `suit`, `rank`, `red`) are immutable, cloning all card objects on every state clone creates massive allocation overhead (~52 objects/clone). Replacing deep card cloning with shallow column array cloning (`col.slice()`) and copy-on-write flip helpers eliminates ~98% of temporary object allocations. Additionally, using `String.fromCharCode(card.id + (card.faceUp ? 128 : 0))` packs card ID and state into a single character, shrinking state key string length by ~64% (from ~180 to ~65 chars) and dramatically speeding up `Set.has`/`add` lookups. Combined, these changes boost solver throughput by ~1.93x (from ~97k states/sec to ~188k states/sec).
 **Action:** Use ASCII character packing for state key strings and copy-on-write reference sharing for immutable state elements during state-space searches.
+
+## 2025-10-04 - Avoid Querying Layout Properties during DOM Render Cycles
+**Learning:** Querying element dimensions via `getBoundingClientRect().width` or `offsetWidth` during render passes forces synchronous browser layout recalculation (reflow thrashing). Caching measured dimensions on the Renderer instance and invalidating them on `resize` events eliminates forced synchronous layout on every move, draw, or auto-step.
+**Action:** Cache layout dimensions on render objects and re-evaluate them only when window `resize` events occur.
