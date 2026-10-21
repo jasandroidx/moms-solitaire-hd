@@ -907,20 +907,20 @@ body.deep-sleep #felt {
 <div id="room"><div id="rail"><div id="felt">
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
-  <button class="btn" id="bDeal">New Deal</button>
-  <button class="btn" id="bDaily">Daily Deal</button>
-  <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
-  <button class="btn" id="bUndo">Undo</button>
-  <button class="btn" id="bDraw">Draw 1</button>
-  <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
-  <button class="btn" id="bHint">Hint</button>
-  <button class="btn" id="bStyle">Style</button>
-  <button class="btn" id="bScenery">Scenery</button>
-  <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
-  <button class="btn" id="bMusic" aria-pressed="true">Music</button>
+  <button class="btn" id="bDeal" title="Start a new deal (N)">New Deal</button>
+  <button class="btn" id="bDaily" title="Play today's daily deal">Daily Deal</button>
+  <button class="btn" id="bWinnable" aria-pressed="false" title="Toggle guaranteed winnable deals">Winnable: OFF</button>
+  <button class="btn" id="bUndo" title="Undo last move (U or Ctrl+Z)" disabled>Undo</button>
+  <button class="btn" id="bDraw" title="Toggle Draw 1 or Draw 3 (D)">Draw 1</button>
+  <button class="btn" id="bBig" aria-pressed="false" title="Scale up cards for easier reading">Big Cards</button>
+  <button class="btn" id="bHint" title="Get a hint (H)">Hint</button>
+  <button class="btn" id="bStyle" title="Cycle felt color">Style</button>
+  <button class="btn" id="bScenery" title="Cycle scenery background">Scenery</button>
+  <button class="btn sm" id="bSound" aria-pressed="true" title="Toggle sound effects">SFX</button>
+  <button class="btn" id="bMusic" aria-pressed="true" title="Toggle background music">Music</button>
   <button class="btn sm" id="bDemo" title="Demo first win (Jason)" aria-label="Demo first win">🎬</button>
   <button class="btn" id="bRandom" title="Random theme" aria-label="Random theme">🎲</button>
-  <button class="btn" id="bHelp">Help</button>
+  <button class="btn" id="bHelp" title="How to play">Help</button>
   <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
@@ -1733,6 +1733,8 @@ class Renderer {
       const el=this.wasteEl.querySelector('[data-waste-top="1"]');
       if(el&&+el.dataset.cid===this.hintCard) el.classList.add('hintglow');
     }
+    const undoBtn = $('#bUndo');
+    if(undoBtn) undoBtn.disabled = !this.eng.canUndo();
   }
 }
 </script>
@@ -2861,7 +2863,11 @@ class UI {
       winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
     }
     $('#winstats').textContent=winMsg;
-    setTimeout(()=>$('#winoverlay').classList.add('show'),900);
+    setTimeout(()=>{
+      $('#winoverlay').classList.add('show');
+      const bAgain = $('#bAgain');
+      if(bAgain) bAgain.focus();
+    },900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
   }
