@@ -1713,10 +1713,14 @@ class Renderer {
     s.tableau.forEach((col,ci)=>{
       const colEl=this.tabCols[ci]; this.clearPile(colEl);
       let y=0, step=0;
+      // Hoist column selection index calculation outside card loop to avoid repeated movableSequence calls
+      const selIdx = (this.selected && this.selected.zone === 'tableau' && this.selected.col === ci)
+        ? (this.selected.idx != null ? this.selected.idx : col.length - this.eng.movableSequence(ci).length)
+        : -1;
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=(this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length))
+        if(selIdx !== -1 && idx >= selIdx)
           el.classList.add('selected');
         if(this.hintCard===c.id) el.classList.add('hintglow');
         colEl.appendChild(el);

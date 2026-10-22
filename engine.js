@@ -152,21 +152,18 @@ class GameEngine {
     return top.faceUp && top.red !== first.red && top.rank === first.rank + v.buildDownBy;
   }
 
+  // Direct foundation pile length checks: foundation piles are strictly sequential (A..K),
+  // so f[suit].length is always equal to the top card's rank.
   canPlaceOnFoundation(card) {
-    const f = this.state.foundations[card.suit];
-    if (!f.length) return card.rank === 1;
-    return this.topOf(f).rank === card.rank - 1;
+    return this.state.foundations[card.suit].length === card.rank - 1;
   }
 
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   isSafeForFoundation(card) {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1;
-    const opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
-    return opp.every(s => {
-      const f = this.state.foundations[s];
-      return f.length && this.topOf(f).rank >= need;
-    });
+    const need = card.rank - 1, f = this.state.foundations;
+    if (card.red) return f.spades.length >= need && f.clubs.length >= need;
+    return f.hearts.length >= need && f.diamonds.length >= need;
   }
 
   _afterMove() {
@@ -391,12 +388,14 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     ]
   });
 
-  const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
+  // Direct foundation pile length checks avoid array indexing and callback allocations in hot solver loop
+  const canF = (card, f) => f[card.suit].length === card.rank - 1;
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
-    return opp.every(s => f[s].length && top(f[s]).rank >= need);
+    const need = card.rank - 1;
+    if (card.red) return f.spades.length >= need && f.clubs.length >= need;
+    return f.hearts.length >= need && f.diamonds.length >= need;
   };
   const canT = (seq, col) => {
     if (!seq.length) return false;
