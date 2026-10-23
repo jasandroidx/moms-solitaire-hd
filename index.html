@@ -907,28 +907,28 @@ body.deep-sleep #felt {
 <div id="room"><div id="rail"><div id="felt">
 <header>
   <h1 id="gametitle">Mom's Solitaire<small>for Mom, from Jason</small></h1>
-  <button class="btn" id="bDeal">New Deal</button>
-  <button class="btn" id="bDaily">Daily Deal</button>
-  <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
-  <button class="btn" id="bUndo">Undo</button>
-  <button class="btn" id="bDraw">Draw 1</button>
-  <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
-  <button class="btn" id="bHint">Hint</button>
-  <button class="btn" id="bStyle">Style</button>
-  <button class="btn" id="bScenery">Scenery</button>
-  <button class="btn sm" id="bSound" aria-pressed="true">SFX</button>
-  <button class="btn" id="bMusic" aria-pressed="true">Music</button>
+  <button class="btn" id="bDeal" title="New deal (N)">New Deal</button>
+  <button class="btn" id="bDaily" title="Daily deal">Daily Deal</button>
+  <button class="btn" id="bWinnable" title="Toggle guaranteed winnable deal" aria-pressed="false">Winnable: OFF</button>
+  <button class="btn" id="bUndo" title="Undo move (U or Ctrl+Z)">Undo</button>
+  <button class="btn" id="bDraw" title="Draw card / change draw count (D)">Draw 1</button>
+  <button class="btn" id="bBig" title="Toggle big cards mode" aria-pressed="false">Big Cards</button>
+  <button class="btn" id="bHint" title="Get a hint (H)">Hint</button>
+  <button class="btn" id="bStyle" title="Cycle card back design">Style</button>
+  <button class="btn" id="bScenery" title="Cycle table background">Scenery</button>
+  <button class="btn sm" id="bSound" title="Toggle sound effects" aria-pressed="true">SFX</button>
+  <button class="btn" id="bMusic" title="Toggle background music" aria-pressed="true">Music</button>
   <button class="btn sm" id="bDemo" title="Demo first win (Jason)" aria-label="Demo first win">🎬</button>
   <button class="btn" id="bRandom" title="Random theme" aria-label="Random theme">🎲</button>
-  <button class="btn" id="bHelp">Help</button>
-  <button class="btn" id="bInstall" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
+  <button class="btn" id="bHelp" title="How to play">Help</button>
+  <button class="btn" id="bInstall" title="Install App" style="display:none;background:#ffd75e;color:#2b1a08;">📲 Install App</button>
   <div id="stats" aria-label="game statistics">0:00 · 0 moves<br>0 wins</div>
 </header>
 <audio id="radioAudio" preload="none"></audio>
 <button id="bRadio" title="Radio on/off" aria-label="Radio on/off" aria-pressed="false"><img src="radio.png" alt="Radio"></button>
 <button id="bScope" title="Daily horoscope" aria-label="Daily horoscope"><img src="scroll.png" alt="Horoscope"></button>
 <button id="bFull" title="Fullscreen on/off" aria-label="Fullscreen on/off">⛶</button>
-<div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="close">✕</button><div class="scope-body"></div></div></div>
+<div id="scopePop" role="dialog" aria-modal="true" aria-label="Daily Horoscope"><div class="scope-card"><button class="scope-close" aria-label="Close horoscope">✕</button><div class="scope-body"></div></div></div>
 
 <div id="board">
   <div id="toprow">
@@ -961,17 +961,17 @@ body.deep-sleep #felt {
     <div class="intro-divider" aria-hidden="true">❖ ♠ ♥ ♦ ♣ ❖</div>
     <div class="lines" id="introlines"></div>
     <div class="tips" id="introtips"></div>
-    <button class="btn" id="bPlay">▶ Play</button>
+    <button class="btn" id="bPlay" title="Start solitaire game">▶ Play</button>
   </div>
 </div>
 
 <div id="winoverlay" role="dialog" aria-modal="true" aria-labelledby="wintitle"><div id="wincard">
   <h2 id="wintitle">🎉 You won! 🎉</h2>
   <p id="winstats"></p>
-  <button class="btn" id="bAgain">Play again 🔄</button>
+  <button class="btn" id="bAgain" title="Play again">Play again 🔄</button>
 </div></div>
 
-<div id="updateoverlay"><div class="updatebox">
+<div id="updateoverlay" role="dialog" aria-modal="true" aria-labelledby="updatetitle"><div class="updatebox">
   <div class="updatespin"></div>
   <div id="updatetitle">Installing system update…</div>
   <div class="updatebar"><div id="updatefill"></div></div>
@@ -984,7 +984,7 @@ body.deep-sleep #felt {
   🃏 Stack columns <b>red on black, counting down</b>. Only a <b>King</b> starts an empty column.<br>
   🖱️ <b>Drag</b> cards where you want them — or <b>tap</b> a card, then tap its new home.<br>
   ⌨️ <b>N</b> new game · <b>H</b> hint · <b>U</b> undo · <b>D</b> draw</p>
-  <button class="btn" id="bCloseHelp">Got it ✓</button>
+  <button class="btn" id="bCloseHelp" title="Close help dialog">Got it ✓</button>
 </div></div>
 
 <script src="engine.js"></script>
@@ -2861,7 +2861,10 @@ class UI {
       winMsg += (secs<=bk?` — new best! 🏅`:` (best ${Math.floor(bk/60)}:${String(bk%60).padStart(2,'0')})`);
     }
     $('#winstats').textContent=winMsg;
-    setTimeout(()=>$('#winoverlay').classList.add('show'),900);
+    setTimeout(()=>{
+      $('#winoverlay').classList.add('show');
+      const bAgain=$('#bAgain'); if(bAgain) bAgain.focus();
+    },900);
     this.say('You won! Congratulations, '+this.playerName+'!');
     this.updateStats();
   }
@@ -3409,6 +3412,10 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        if($('#winoverlay').classList.contains('show')){
+          $('#winoverlay').classList.remove('show');
+          const bDeal=$('#bDeal'); if(bDeal) bDeal.focus();
+        }
         return;
       }
       const k=e.key.toLowerCase();
