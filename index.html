@@ -2581,14 +2581,33 @@ class UI {
   crappyChatInit(){
     if($('#chatBtn')) return;
     const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
-    btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
+    btn.setAttribute('aria-label', 'Chat with Crappy');
+    btn.setAttribute('aria-expanded', 'false');
+    const closeChat=()=>{
+      const p=$('#chatPanel');
+      if(p&&p.classList.contains('open')){
+        p.classList.remove('open');
+        btn.setAttribute('aria-expanded','false');
+        btn.focus();
+      }
+    };
+    btn.onclick=()=>{ const p=$('#chatPanel'); const isOpen=p.classList.toggle('open');
+      btn.setAttribute('aria-expanded', isOpen?'true':'false');
+      try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
-      if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
+      if(isOpen){
+        if(!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); }
+        const closeBtn=$('#chatClose'); if(closeBtn) closeBtn.focus();
+      } else { btn.focus(); }
+    };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'Chat with Crappy');
+    panel.setAttribute('aria-modal', 'true');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
-    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatClose').onclick=closeChat;
     this.crappyChatBuild();
     this.crappyChatUpdate();
   }
@@ -2647,7 +2666,10 @@ class UI {
     const btn=$('#chatBtn'); if(!btn) return;
     const show=this.poopArrived();
     btn.style.display=show?'flex':'none';
-    if(!show) $('#chatPanel').classList.remove('open');
+    if(!show){
+      $('#chatPanel').classList.remove('open');
+      btn.setAttribute('aria-expanded','false');
+    }
   }
   // ---------- Crappy feels alive: blinks, wanders, smiles, chatters ----------
   poopAmbient(){
@@ -3409,6 +3431,12 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const cp=$('#chatPanel');
+        if(cp&&cp.classList.contains('open')){
+          cp.classList.remove('open');
+          const cb=$('#chatBtn');
+          if(cb){ cb.setAttribute('aria-expanded','false'); cb.focus(); }
+        }
         return;
       }
       const k=e.key.toLowerCase();
@@ -3692,6 +3720,7 @@ class UI {
     const intro = $('#intro'); if(intro && !intro.classList.contains('hide')) return true;
     const help = $('#help'); if(help && help.classList.contains('show')) return true;
     const scope = $('#scopePop'); if(scope && scope.classList.contains('show')) return true;
+    const chat = $('#chatPanel'); if(chat && chat.classList.contains('open')) return true;
     const upd = $('#updateoverlay'); if(upd && upd.classList.contains('show')) return true;
     return false;
   }
