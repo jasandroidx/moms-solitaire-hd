@@ -1677,6 +1677,12 @@ class Renderer {
     // the green table keeps the family-photo backs (photoFor returns null off-table).
     const _sc=document.body.dataset.scene||'';
     const pat=_sc==='ocean'?'ocean':_sc==='night'?'night':ui.backPat;
+
+    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
+    // Read card width BEFORE mutating DOM to prevent forced synchronous layout thrashing during render.
+    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
+    const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
+
     // stock
     this.clearPile(this.stockEl);
     if(s.stock.length){
@@ -1694,9 +1700,6 @@ class Renderer {
     // waste: fan last 3
     this.clearPile(this.wasteEl);
     const show=s.waste.slice(-3);
-    // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
-    const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
-    const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});
       el.dataset.zone='waste'; el.dataset.wasteTop = (i===show.length-1)?'1':'0';
@@ -1713,10 +1716,14 @@ class Renderer {
     s.tableau.forEach((col,ci)=>{
       const colEl=this.tabCols[ci]; this.clearPile(colEl);
       let y=0, step=0;
+      // Precompute selected card start index for column once to avoid repeating movableSequence calls inside the card loop
+      const selStart = (this.selected && this.selected.zone === 'tableau' && this.selected.col === ci)
+        ? (this.selected.idx != null ? this.selected.idx : col.length - this.eng.movableSequence(ci).length)
+        : -1;
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=(this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length))
+        if(selStart !== -1 && idx >= selStart)
           el.classList.add('selected');
         if(this.hintCard===c.id) el.classList.add('hintglow');
         colEl.appendChild(el);
