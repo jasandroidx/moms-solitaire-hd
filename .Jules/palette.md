@@ -8,3 +8,7 @@
 ## 2026-10-02 - Cloned Element Offset Alignment in Magnifying Glass / Lens Tools
 **Learning:** When creating a magnifying lens by cloning DOM elements (`#felt`/`#board`) into an offset circular viewport (`.lview`), cloned elements inherit relative container metrics or inline styles unless explicitly reset (`position: absolute; left: 0; top: 0; margin: 0; width: 100%; height: 100%; transform: none; zoom: 1`).
 **Action:** Always enforce zeroed top/left offsets and scale resets on cloned DOM children inside zoom viewports to ensure precise alignment under the lens focal point.
+
+## 2026-10-30 - Focus Focus Management & ARIA Toggle Sync on Dynamic Popups & Fullscreen
+**Learning:** For custom overlays (#winoverlay) and toggle controls (#bFull, #chatBtn), explicit focus placement when shown (e.g. focusing #bAgain on win) and dynamic updates to `aria-pressed`, `aria-expanded`, and `aria-label` ensure seamless screen reader and keyboard interaction.
+**Action:** Always focus the primary action button upon opening overlay modals, and update ARIA states inside event listeners for state/fullscreen changes.
