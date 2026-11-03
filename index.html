@@ -910,7 +910,7 @@ body.deep-sleep #felt {
   <button class="btn" id="bDeal">New Deal</button>
   <button class="btn" id="bDaily">Daily Deal</button>
   <button class="btn" id="bWinnable" aria-pressed="false">Winnable: OFF</button>
-  <button class="btn" id="bUndo">Undo</button>
+  <button class="btn" id="bUndo" title="No moves to undo" disabled aria-disabled="true">Undo</button>
   <button class="btn" id="bDraw">Draw 1</button>
   <button class="btn" id="bBig" aria-pressed="false">Big Cards</button>
   <button class="btn" id="bHint">Hint</button>
@@ -2786,6 +2786,15 @@ class UI {
       label += `${this.stats.wins} won`;
     }
     $('#stats').innerHTML=label;
+    this.updateUndoBtn();
+  }
+  updateUndoBtn(){
+    const b=$('#bUndo');
+    if(!b) return;
+    const can=this.eng && typeof this.eng.canUndo==='function' && this.eng.canUndo();
+    b.disabled=!can;
+    b.setAttribute('aria-disabled', can?'false':'true');
+    b.title=can?'Undo last move':'No moves to undo';
   }
   afterMove(msg){
     this.ensureTimer(); this.view.render(this); this.updateStats();
