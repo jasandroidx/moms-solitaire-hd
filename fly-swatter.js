@@ -161,6 +161,14 @@ function showStink(){
     later(function(){ try{d.remove();}catch(e){} },3000);
   }catch(e){}
 }
+/* Each fly gets its own flight path, and two in a row never share one,
+   so flies on screen together don't march in lockstep. */
+function pickPathKind(){
+  var kinds=["wander","zigzag","dart-pause","loop"];
+  var k=kinds[(Math.random()*kinds.length)|0];
+  if(k===state.lastPathKind) k=kinds[(kinds.indexOf(k)+1)%kinds.length];
+  state.lastPathKind=k; return k;
+}
 function spawnFly(typeName, teaser){
   var t=TYPES[typeName]||TYPES.regular;
   var el=document.createElement("div");
@@ -176,6 +184,9 @@ function spawnFly(typeName, teaser){
   var y = 70+Math.random()*(Math.max(200,innerHeight-t.size-120));
   var f={el:el, type:t, typeName:typeName, x:x, y:y, px:x, py:y,
     dartUntil:0, teaser:!!teaser, bornAt:performance.now(), burstSeed:Math.random()*700,
+    pathKind:pickPathKind(), ph1:Math.random()*Math.PI*2, ph2:Math.random()*Math.PI*2,
+    freq:0.7+Math.random()*0.6, amp:0.7+Math.random()*0.6,
+    pauseUntil:0, zigDir:Math.random()*Math.PI*2, zigUntil:0, lastAng:0,
     id:(state.flySeq=(state.flySeq||0)+1)};
   state.flies.push(f); if(state.buzz && state.buzz.volume!==undefined){ try{ state.buzz.volume=Math.min(0.20, 0.12 + state.flies.length*0.02); }catch(e){} }
   if(typeName==="bonus") state.lastGoldAt=elapsed();
@@ -239,24 +250,45 @@ function flyLoop(){
     }
     var sp=phaseSpeed(f.typeName)*(near?2.0:1.0);
     var nx=0, ny=0;
-    if(f.typeName==="fast"){
-      /* Dart bursts: fast ~0.4 s, pause ~0.3 s, repeat. */
+    if(now < f.pauseUntil){
+      /* Pausing here and there: sit still, keep facing the same way. */
+      nx=0; ny=0;
+    } else if(f.typeName==="fast"){
+      /* Dart bursts: fast ~0.4 s, pause ~0.3 s, repeat. Per-fly phase, so two fast flies don't sync. */
       var cycle=(now+f.burstSeed)%700;
-      if(cycle<400){ nx=(Math.sin(1.2*t)+Math.sin(2.7*t)*0.5)*sp; ny=(Math.cos(0.9*t)+Math.cos(3.1*t)*0.5)*sp; }
+      if(cycle<400){ nx=(Math.sin(1.2*t*f.freq+f.ph1)+Math.sin(2.7*t*f.freq+f.ph2)*0.5)*sp; ny=(Math.cos(0.9*t*f.freq+f.ph1)+Math.cos(3.1*t*f.freq+f.ph2)*0.5)*sp; }
     } else if(f.typeName==="bonus"){
-      /* Slow wide arcs: larger amplitude, lower frequency. */
-      nx=Math.sin(0.6*t)*1.5*sp; ny=Math.cos(0.5*t)*1.2*sp;
+      /* Slow wide arcs: larger amplitude, lower frequency. Per-fly phase. */
+      nx=Math.sin(0.6*t*f.freq+f.ph1)*1.5*sp; ny=Math.cos(0.5*t*f.freq+f.ph2)*1.2*sp;
+    } else if(f.pathKind==="zigzag"){
+      /* Sharp turns every ~0.6-1.3 s, sometimes a short stop at the turn. */
+      if(now>=f.zigUntil){ f.zigDir=Math.random()*Math.PI*2; f.zigUntil=now+600+Math.random()*700; if(Math.random()<0.35) f.pauseUntil=now+300+Math.random()*600; }
+      nx=Math.cos(f.zigDir)*sp*1.4; ny=Math.sin(f.zigDir)*sp*1.1;
+    } else if(f.pathKind==="dart-pause"){
+      /* Move in ~0.9 s bursts, then sit still ~0.7 s, repeat. */
+      var dcycle=(now+f.burstSeed)%1600;
+      if(dcycle<900){ nx=Math.sin(1.4*t*f.freq+f.ph1)*sp*1.3; ny=Math.cos(1.1*t*f.freq+f.ph2)*sp*1.1; }
+    } else if(f.pathKind==="loop"){
+      /* Loopy circles with a slow drift, plus an occasional pause. */
+      var la=t*0.9*f.freq+f.ph1;
+      nx=Math.cos(la)*sp*1.2 + Math.sin(0.5*t+f.ph2)*sp*0.3;
+      ny=Math.sin(la)*sp*0.9 + Math.cos(0.4*t+f.ph1)*sp*0.3;
+      if(Math.random()<0.002) f.pauseUntil=now+400+Math.random()*800;
     } else {
-      nx=(Math.sin(1.2*t)+Math.sin(2.7*t)*0.5)*sp;
-      ny=(Math.cos(0.9*t)+Math.cos(3.1*t)*0.5)*sp;
+      /* Wander: the old sine mix, but with this fly's own phase/frequency/amplitude, plus occasional pauses. */
+      nx=(Math.sin(1.2*t*f.freq+f.ph1)+Math.sin(2.7*t*f.freq+f.ph2)*0.5)*sp*f.amp;
+      ny=(Math.cos(0.9*t*f.freq+f.ph1)+Math.cos(3.1*t*f.freq+f.ph2)*0.5)*sp*f.amp;
+      if(Math.random()<0.0015) f.pauseUntil=now+400+Math.random()*900;
     }
+    var moved=(nx!==0||ny!==0);
     f.px=f.x; f.py=f.y;
     f.x=Math.max(40,Math.min(innerWidth-f.type.size-20,f.x+nx));
     f.y=Math.max(60,Math.min(innerHeight-f.type.size-20,f.y+ny));
-    var ang=Math.atan2(f.y-f.py,f.x-f.px)*180/Math.PI+90;
+    var ang=moved ? Math.atan2(f.y-f.py,f.x-f.px)*180/Math.PI+90 : (f.lastAng||0);
+    if(moved) f.lastAng=ang;
     var rush = state.mode && state.timeLeft<=10 ? " fly-rush" : "";
     f.el.className="fly-bug2 fly-live"+(f.typeName==="bonus"?" bonus":"")+rush;
-    f.el.style.transform="translate("+f.x+"px,"+f.y+"px) rotate("+ang+"deg)";
+    if(moved) f.el.style.transform="translate("+f.x+"px,"+f.y+"px) rotate("+ang+"deg)";
     i++;
   }
   state.raf=requestAnimationFrame(flyLoop);
@@ -302,10 +334,20 @@ function crappyWarOn(){
       if(_img){ state.warImgSaved={src:_img.src, face:_img.dataset.face}; _img.src="assets/fly/crappy-war-aim.webp"; _img.dataset.face="war"; state.warAim=true; }
     }catch(e){}
     b.style.display="block";
-    b.style.right=Math.max(8,innerWidth-170)+"px";
-    b.style.bottom="18px";
     b.style.zIndex="205";
     b.classList.add("fly-war");
+    /* War Crappy roams the whole board pretending to shoot flies — no corner parking. */
+    if(state.warWander) clearInterval(state.warWander);
+    var warMove=function(){
+      if(!state.mode) return;
+      var bb=$("poopbuddy"); if(!bb) return;
+      var bw=bb.offsetWidth||96;
+      bb.style.right=(8+Math.random()*Math.max(60,innerWidth-bw-16))+"px";
+      bb.style.bottom=(64+Math.random()*Math.max(60,innerHeight-180))+"px";
+      try{ if(window.ui && window.ui.poopPlaceBubble){ var pb=document.getElementById("poopbubble"); if(pb&&pb.classList.contains("show")) window.ui.poopPlaceBubble(); } }catch(e){}
+    };
+    warMove();
+    state.warWander=setInterval(warMove, 3000+Math.random()*2000);
     if(!state.warAim && !b.querySelector(".crappy-war-gear")){
       var g=document.createElement("div"); g.className="crappy-war-gear";
       g.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true">'
@@ -323,6 +365,7 @@ function crappyWarOn(){
 }
 function crappyWarOff(){
   try{
+    if(state.warWander){ clearInterval(state.warWander); state.warWander=null; }
     var b=$("poopbuddy"); if(!b) return;
     try{
       var _img=b.querySelector("img");
@@ -335,34 +378,12 @@ function crappyWarOff(){
     if(crappyUnlocked() && window.ui) window.ui.poopFace("idle");
   }catch(e){}
 }
-function arcadeAllRight(text){
-  try{
-    var old=$("fly-arcade"); if(old) old.remove();
-    var d=document.createElement("div"); d.id="fly-arcade";
-    d.innerHTML='<span>'+text+'</span>'; document.body.appendChild(d);
-    setTimeout(function(){ try{d.remove();}catch(e){} },950);
-    /* Voice: try the wired clip first, fall back to built-in speech, then just the sting. */
-    var a=new Audio("assets/fly/arcade-allright.mp3");
-    a.volume=0.9;
-    a.addEventListener("error",function(){
-      try{
-        if(window.speechSynthesis){
-          var u=new SpeechSynthesisUtterance("All right!");
-          u.rate=0.85; u.pitch=0.6; u.volume=1;
-          window.speechSynthesis.speak(u);
-        }
-      }catch(e){}
-    });
-    var p=a.play(); if(p&&p.catch) p.catch(function(){});
-    playSfx("bonus-chime", 0.9);
-  }catch(e){}
-}
 function checkThresholds(){
+  /* Thresholds are still tracked, but there is no ALL RIGHT banner or sound any more. */
   var t=[100,250,500,1000];
   for(var i=0;i<t.length;i++){
     if(state.score>=t[i] && !state.thresholdsHit[t[i]]){
       state.thresholdsHit[t[i]]=true;
-      arcadeAllRight(t[i]>=500 ? "ALLLLRIGHT!!" : "ALL RIGHT!");
     }
   }
 }
