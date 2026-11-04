@@ -346,11 +346,19 @@ function crappyWarOn(){
       bb.style.bottom=(64+Math.random()*Math.max(60,innerHeight-180))+"px";
       try{ if(window.ui && window.ui.poopPlaceBubble){ var pb=document.getElementById("poopbubble"); if(pb&&pb.classList.contains("show")) window.ui.poopPlaceBubble(); } }catch(e){}
     };
-    warMove();
-    state.warWander=setInterval(warMove, 3000+Math.random()*2000);
-    /* Crappy fires on his own schedule, not on every swat — otherwise fast swatting makes him flicker like crazy. */
-    if(state.warFire) clearInterval(state.warFire);
-    state.warFire=setInterval(function(){ if(state.mode && state.warAim) crappyFireFlash(); }, 5000);
+    /* Crappy does his own thing: roams, aims, and shoots at random — not on a fixed clock, not at any particular fly. */
+    var warRoamStep=function(){
+      if(!state.mode || !state.warAim) return;
+      warMove();
+      state.warWander=setTimeout(warRoamStep, 2500+Math.random()*4000);
+    };
+    state.warWander=setTimeout(warRoamStep, 2000+Math.random()*3000);
+    var warFireStep=function(){
+      if(!state.mode || !state.warAim) return;
+      crappyFireFlash();
+      state.warFire=setTimeout(warFireStep, 3000+Math.random()*5000);
+    };
+    state.warFire=setTimeout(warFireStep, 2000+Math.random()*3000);
     if(!state.warAim && !b.querySelector(".crappy-war-gear")){
       var g=document.createElement("div"); g.className="crappy-war-gear";
       g.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true">'
@@ -382,9 +390,9 @@ function crappyFireFlash(){
 }
 function crappyWarOff(){
   try{
-    if(state.warWander){ clearInterval(state.warWander); state.warWander=null; }
+    if(state.warWander){ clearInterval(state.warWander); clearTimeout(state.warWander); state.warWander=null; }
     if(state.fireT){ clearTimeout(state.fireT); state.fireT=null; }
-    if(state.warFire){ clearInterval(state.warFire); state.warFire=null; }
+    if(state.warFire){ clearInterval(state.warFire); clearTimeout(state.warFire); state.warFire=null; }
     var b=$("poopbuddy"); if(!b) return;
     try{
       var _img=b.querySelector("img");
