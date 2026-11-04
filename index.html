@@ -1034,32 +1034,12 @@ const Sfx = {
   /* play an arbitrary audio file by path (voices, one-shots) */
   file(src){ if(this.muted) return; this.ensure(); try{ const a=new Audio(src); const p=a.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} },
   /* Happy Crappy entrance jingle: slide-whistle up + bouncy oom-pah melody, all synth */
-  /* Cartoon fart repertoire — four styles, picked at random. No audio files needed. */
-  _fartBlast(base, dur, flutter, vol, when){
-    const ctx=this.ctx, t0=ctx.currentTime+(when||0);
-    const o=ctx.createOscillator(), g=ctx.createGain(), lfo=ctx.createOscillator(), lg=ctx.createGain();
-    o.type='sawtooth';
-    o.frequency.setValueAtTime(base,t0);
-    o.frequency.linearRampToValueAtTime(Math.max(30,base*0.6),t0+dur);
-    lfo.type='square'; lfo.frequency.setValueAtTime(flutter,t0);
-    lg.gain.setValueAtTime(base*0.5,t0);
-    lfo.connect(lg); lg.connect(o.frequency);
-    g.gain.setValueAtTime(0.0001,t0);
-    g.gain.exponentialRampToValueAtTime(vol,t0+0.03);
-    g.gain.exponentialRampToValueAtTime(0.001,t0+dur);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(t0); lfo.start(t0); o.stop(t0+dur+0.05); lfo.stop(t0+dur+0.05);
-  },
+  /* Jason's real fart clips only — no synth farts */
   fart(big){
     if(this.muted) return;
-    try{ var _r=Math.random(); if(_r<0.35){ this.file('assets/voices/poop-fart-short.mp3'); return; } if(_r<0.60){ this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} return; } }catch(e){}
-    this.ensure(); if(!this.ctx) return;
     try{
-      const style=big?2:(Math.random()*4)|0;
-      if(style===0) this._fartBlast(55+Math.random()*45, 0.45+Math.random()*0.25, 28+Math.random()*14, 0.22); // classic wobble
-      else if(style===1) this._fartBlast(140+Math.random()*60, 0.22+Math.random()*0.12, 45+Math.random()*20, 0.16); // squeaky toot
-      else if(style===2) this._fartBlast(40+Math.random()*20, big?1.1:0.8, 18+Math.random()*8, 0.26); // long rumble
-      else { const b=70+Math.random()*40; this._fartBlast(b,0.12,50,0.2,0); this._fartBlast(b*0.9,0.12,50,0.2,0.14); this._fartBlast(b*1.1,0.16,55,0.22,0.28); } // machine-gun
+      if(Math.random()<0.58){ this.file('assets/voices/poop-fart-short.mp3'); }
+      else { this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} }
     }catch(e){}
   },
   poopFanfare(){
@@ -1317,28 +1297,13 @@ const Sfx = {
     sounds[Math.floor(Math.random() * sounds.length)]();
     Vox.maybe('illegal', 0.15);
   },
-  /* illegal-move raspberry: 3 randomized synth farts */
+  /* Jason's real fart clips only — no synth farts */
   fart(){
     if(this.muted) return;
-    try{ var _r=Math.random(); if(_r<0.35){ this.file('assets/voices/poop-fart-short.mp3'); return; } if(_r<0.60){ this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} return; } }catch(e){}
-    this.ensure(); if(!this.ctx) return;
-    const ctx=this.ctx, t0=ctx.currentTime+0.01;
-    const cfg=[{d:0.25,f:90,fl:30},{d:0.5,f:65,fl:22},{d:0.16,f:120,fl:38}][(Math.random()*3)|0];
-    const o=ctx.createOscillator(); o.type='sawtooth';
-    o.frequency.setValueAtTime(cfg.f,t0);
-    o.frequency.exponentialRampToValueAtTime(Math.max(30,cfg.f*0.6),t0+cfg.d);
-    const g=ctx.createGain();
-    g.gain.setValueAtTime(0.0001,t0);
-    g.gain.exponentialRampToValueAtTime(0.25,t0+0.03);
-    g.gain.exponentialRampToValueAtTime(0.001,t0+cfg.d);
-    const lfo=ctx.createOscillator(); lfo.type='square'; lfo.frequency.value=cfg.fl; // the flutter
-    const lg=ctx.createGain(); lg.gain.value=0.12;
-    lfo.connect(lg); lg.connect(g.gain);
-    const lfo2=ctx.createOscillator(); lfo2.type='sine'; lfo2.frequency.value=cfg.fl*0.5; // pitch wobble
-    const lg2=ctx.createGain(); lg2.gain.value=cfg.f*0.25;
-    lfo2.connect(lg2); lg2.connect(o.frequency);
-    o.connect(g); g.connect(ctx.destination);
-    [o,lfo,lfo2].forEach(n=>{ n.start(t0); n.stop(t0+cfg.d+0.05); });
+    try{
+      if(Math.random()<0.58){ this.file('assets/voices/poop-fart-short.mp3'); }
+      else { this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} }
+    }catch(e){}
   },
   fanfare(){ [392,523,659,784,1047].forEach((f,i)=>this.tone(f,.2,'triangle',.1,i*.1)); },
   sigh(){ this.tone(330,.16,'sine',.09); this.tone(220,.3,'sine',.09,.16); },
