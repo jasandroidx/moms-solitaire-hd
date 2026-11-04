@@ -348,6 +348,9 @@ function crappyWarOn(){
     };
     warMove();
     state.warWander=setInterval(warMove, 3000+Math.random()*2000);
+    /* Crappy fires on his own schedule, not on every swat — otherwise fast swatting makes him flicker like crazy. */
+    if(state.warFire) clearInterval(state.warFire);
+    state.warFire=setInterval(function(){ if(state.mode && state.warAim) crappyFireFlash(); }, 5000);
     if(!state.warAim && !b.querySelector(".crappy-war-gear")){
       var g=document.createElement("div"); g.className="crappy-war-gear";
       g.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true">'
@@ -381,6 +384,7 @@ function crappyWarOff(){
   try{
     if(state.warWander){ clearInterval(state.warWander); state.warWander=null; }
     if(state.fireT){ clearTimeout(state.fireT); state.fireT=null; }
+    if(state.warFire){ clearInterval(state.warFire); state.warFire=null; }
     var b=$("poopbuddy"); if(!b) return;
     try{
       var _img=b.querySelector("img");
@@ -576,7 +580,7 @@ document.addEventListener("pointerdown",function(e){
     if(hit.typeName==="fast"){ try{ showTaunt(hit.x+hit.type.size/2, hit.y, "BOOM!"); }catch(e){} }
     if(hit.typeName==="bonus") playSfx("bonus-chime", 0.8);
     if(hit.typeName==="sleepy") state.sleepyCount=Math.max(state.sleepyCount,1);
-    removeFly(hit); if(state.warAim) crappyFireFlash(); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
+    removeFly(hit); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
     if(crappyUnlocked() && state.swats%5===0){
       try{
         if(state.warAim){ window.ui.poopSay(WAR_LINES[(Math.random()*WAR_LINES.length)|0], 2500); }
