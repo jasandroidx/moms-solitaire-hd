@@ -3752,41 +3752,13 @@ class UI {
     const splash=$('#splash'); splash.classList.remove('hide');
     setTimeout(()=>splash.classList.add('hide'), 2400);
     $('#intro').classList.remove('hide');
-    // the button that refuses to work — it flees to a corner, she chases it.
-    // click 1: silent dodge. click 2: 🎵 can't touch this. click 3: ohhh, you gotta be quicker than that. click 4: it gives in.
-    let clicks=0, chases=0;
+    // Play works on the FIRST click, every time. No dodging, no chasing — Mom just wants to play.
     const btn=$('#bPlay'); btn.textContent='▶ Play';
-    const corner=()=>{
-      // Ordering/connection constraint: button must be connected to DOM when measuring layout; fall back if zero/detached
-      const pad=16, w=(btn&&btn.isConnected?btn.offsetWidth:0)||120, h=(btn&&btn.isConnected?btn.offsetHeight:0)||44;
-      const spots=[
-        {l:pad, t:pad},
-        {l:Math.max(pad, window.innerWidth-w-pad), t:pad},
-        {l:pad, t:Math.max(pad, window.innerHeight-h-pad-10)},
-        {l:Math.max(pad, window.innerWidth-w-pad), t:Math.max(pad, window.innerHeight-h-pad-10)},
-      ];
-      return spots[(Math.random()*spots.length)|0];
-    };
     btn.onclick=()=>{
-      Sfx.ensure(); clicks++;
-      if(clicks<CUSTOM.playTeaseClicks){
-        chases++;
-        const s=corner();
-        btn.style.position='fixed'; btn.style.zIndex=96;
-        btn.style.transition='left .16s ease-out, top .16s ease-out, transform .16s';
-        btn.style.left=s.l+'px'; btn.style.top=s.t+'px';
-        btn.style.transform=`rotate(${(Math.random()*18-9)|0}deg) scale(${Math.max(.55, 1-chases*.12)})`;
-        if(clicks===2){ Vox.play('cantTouch'); this.say("🎵 Can't touch this!"); }
-        else if(clicks===3){ Vox.play('quicker'); this.say("Ohhh, you gotta be quicker than that!"); }
-        return;
-      }
+      Sfx.ensure();
       btn.onclick=null;
-      btn.style.position=''; btn.style.left=''; btn.style.top='';
-      btn.style.transform=''; btn.style.transition=''; btn.style.zIndex='';
-      btn.textContent=CUSTOM.playGiveIn;
-      this.say(CUSTOM.playGiveIn); Sfx.fanfare();
-      setTimeout(()=>{ $('#intro').classList.add('hide'); btn.textContent='▶ Play';
-        Music.start(); this.poke(); this.say('Have fun, '+this.playerName+'! 💛'); }, 1500);
+      $('#intro').classList.add('hide');
+      Music.start(); this.poke(); this.say('Have fun, '+this.playerName+'! 💛');
     };
   }
   isOverlayOrBusy(){
