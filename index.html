@@ -465,6 +465,8 @@ header,#board{position:relative;z-index:3;}
 .poop-buddy img{transition:transform .12s;}
 .poop-buddy.blink img{transform:scaleY(.12);}
 .poop-buddy.hop{animation:poopHop .5s ease-in-out,poopBob 3s ease-in-out 1s infinite !important;}
+.poop-buddy.poop-strain img{animation:poopStrain .25s ease-in-out infinite;}
+@keyframes poopStrain{0%,100%{transform:scale(1,1) translateY(0);}50%{transform:scale(1.12,.78) translateY(3px);}}
 /* persistent brown spot — stays for the whole hand */
 .poop-stain{position:fixed;z-index:39;pointer-events:none;border-radius:50%;
   background:radial-gradient(ellipse at center,rgba(101,67,33,.5) 0%,rgba(101,67,33,.28) 45%,rgba(101,67,33,0) 72%);
@@ -1049,7 +1051,9 @@ const Sfx = {
     o.start(t0); lfo.start(t0); o.stop(t0+dur+0.05); lfo.stop(t0+dur+0.05);
   },
   fart(big){
-    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    if(this.muted) return;
+    try{ var _r=Math.random(); if(_r<0.35){ this.file('assets/voices/poop-fart-short.mp3'); return; } if(_r<0.60){ this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} return; } }catch(e){}
+    this.ensure(); if(!this.ctx) return;
     try{
       const style=big?2:(Math.random()*4)|0;
       if(style===0) this._fartBlast(55+Math.random()*45, 0.45+Math.random()*0.25, 28+Math.random()*14, 0.22); // classic wobble
@@ -1315,7 +1319,9 @@ const Sfx = {
   },
   /* illegal-move raspberry: 3 randomized synth farts */
   fart(){
-    if(this.muted) return; this.ensure(); if(!this.ctx) return;
+    if(this.muted) return;
+    try{ var _r=Math.random(); if(_r<0.35){ this.file('assets/voices/poop-fart-short.mp3'); return; } if(_r<0.60){ this.file('assets/voices/poop-fart-wet.mp3'); try{ if(window.ui && window.ui.poopStrain) window.ui.poopStrain(1900); }catch(e){} return; } }catch(e){}
+    this.ensure(); if(!this.ctx) return;
     const ctx=this.ctx, t0=ctx.currentTime+0.01;
     const cfg=[{d:0.25,f:90,fl:30},{d:0.5,f:65,fl:22},{d:0.16,f:120,fl:38}][(Math.random()*3)|0];
     const o=ctx.createOscillator(); o.type='sawtooth';
@@ -2796,6 +2802,14 @@ class UI {
       }
       setTimeout(chatter, 50000+Math.random()*50000); };
     setTimeout(blink,2500); setTimeout(wander,12000); setTimeout(smile,9000); setTimeout(chatter,30000);
+  }
+  // wet-fart strain: worried face + squash/shake for the length of the wet clip
+  poopStrain(ms){
+    if(!this.poopArrived()) return;
+    const buddy=this.poopFace('worried'); buddy.style.display='block';
+    buddy.classList.add('poop-strain');
+    clearTimeout(this._poopStrainT);
+    this._poopStrainT=setTimeout(()=>{ buddy.classList.remove('poop-strain'); this.poopFace('idle'); }, ms||1900);
   }
   // poke the poop: several things may happen
   poopPoke(){
