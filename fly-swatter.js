@@ -459,14 +459,14 @@ function startTeaser(){
   state.teaserScheduled=false;
   window.__flyActive=true;
   injectCSS(); state.teaser=true;
-  /* Fly 1: right away. Fly 2: ~20s in. Fly 3: ~45s in, then the swatter. */
+  /* Fly 1: teaser start. Fly 2: +60s. Fly 3: +120s, then the swatter. */
   spawnFly("regular",true);
   startBuzz();
   state.raf=requestAnimationFrame(flyLoop);
   later(function(){
     if(!state.teaser) return;
     spawnFly("regular",true);
-  }, 20000);
+  }, 60000);
   later(function(){
     if(!state.teaser) return;
     spawnFly("regular",true);
@@ -478,7 +478,7 @@ function startTeaser(){
       }catch(e){}
       showStink();
     }
-  }, 45000);
+  }, 120000);
   later(function(){
     if(!state.teaser) return;
     var entry=document.createElement("div"); entry.id="fly-entry"; entry.tabIndex=0;
@@ -488,8 +488,8 @@ function startTeaser(){
     entry.addEventListener("mouseleave",function(){ var i=$("fly-entry-img"); if(i) i.src="assets/fly/swatter-icon-128.png"; });
     entry.addEventListener("click",function(e){ e.stopPropagation(); startGame(); });
     entry.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); startGame(); } });
-  }, 47000);
-  later(function(){ if(state.teaser) endTeaser(false); }, 150000);
+  }, 122000);
+  later(function(){ if(state.teaser) endTeaser(false); }, 240000);
 }
 function scheduleTeaser(ms){
   if(state.teaserDone || state.teaserScheduled || state.mode || state.teaser) return;
@@ -576,14 +576,14 @@ window.addEventListener("load",function(){
       var _origNewGame = window.ui.newGame;
       window.ui.newGame = function(){
         var r = _origNewGame.apply(this, arguments);
-        try{ if(!state.mode && !state.teaser){ state.teaserDone=false; scheduleTeaser(15000+Math.random()*15000); } }catch(e){}
+        try{ if(!state.mode && !state.teaser){ state.teaserDone=false; scheduleTeaser(120000+Math.random()*360000); } }catch(e){}
         return r;
       };
       window.ui.newGame.__flyHooked = true;
     }
   }catch(e){}
   var testMode = /[?&]flytest=1/.test(location.search);
-  scheduleTeaser(testMode ? 12000 : 15000+Math.random()*30000);
+  scheduleTeaser(testMode ? 12000 : 120000+Math.random()*360000);
   scheduleIdleStink();
 });
 window.__flyTest={
