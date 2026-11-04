@@ -446,29 +446,39 @@ function endGame(timedOut){
   $("fly-done").addEventListener("click",function(){ end.remove(); });
 }
 function endTeaser(silent){
-  state.teaser=false; if(!silent) window.__flyActive=false;
+  state.teaser=false; state.teaserDone=true; state.teaserScheduled=false; if(!silent) window.__flyActive=false;
   cancelAnimationFrame(state.raf);
   state.flies.slice().forEach(function(f){ if(f.teaser) removeFly(f); });
   stopBuzz();
   var e=$("fly-entry"); if(e) e.remove();
   var b=$("poopbuddy"); if(b) b.classList.remove("fly-panic");
-  if(!silent) scheduleTeaser(45000+Math.random()*45000);
+  /* Once per card game: no reschedule here. A new deal (ui.newGame) resets it. */
 }
 function startTeaser(){
-  if(state.mode||state.teaser) return;
+  if(state.mode||state.teaser||state.teaserDone) return;
+  state.teaserScheduled=false;
   window.__flyActive=true;
   injectCSS(); state.teaser=true;
+  /* Fly 1: right away. Fly 2: ~20s in. Fly 3: ~45s in, then the swatter. */
   spawnFly("regular",true);
   startBuzz();
   state.raf=requestAnimationFrame(flyLoop);
-  if(crappyUnlocked()){
-    try{
-      var buddy=window.ui.poopFace("panic"); buddy.style.display="block";
-      buddy.classList.add("fly-panic");
-      window.ui.poopSay("stupid flies....! Laura! HELP ME!", 6000);
-    }catch(e){}
-    showStink();
-  }
+  later(function(){
+    if(!state.teaser) return;
+    spawnFly("regular",true);
+  }, 20000);
+  later(function(){
+    if(!state.teaser) return;
+    spawnFly("regular",true);
+    if(crappyUnlocked()){
+      try{
+        var buddy=window.ui.poopFace("panic"); buddy.style.display="block";
+        buddy.classList.add("fly-panic");
+        window.ui.poopSay("Oh my god, Laura, help! I think they are attracted to me!", 6000);
+      }catch(e){}
+      showStink();
+    }
+  }, 45000);
   later(function(){
     if(!state.teaser) return;
     var entry=document.createElement("div"); entry.id="fly-entry"; entry.tabIndex=0;
@@ -478,10 +488,14 @@ function startTeaser(){
     entry.addEventListener("mouseleave",function(){ var i=$("fly-entry-img"); if(i) i.src="assets/fly/swatter-icon-128.png"; });
     entry.addEventListener("click",function(e){ e.stopPropagation(); startGame(); });
     entry.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); startGame(); } });
-  }, crappyUnlocked()?7000:6000);
-  later(function(){ if(state.teaser) endTeaser(false); }, 60000);
+  }, 47000);
+  later(function(){ if(state.teaser) endTeaser(false); }, 150000);
 }
-function scheduleTeaser(ms){ later(startTeaser, ms); }
+function scheduleTeaser(ms){
+  if(state.teaserDone || state.teaserScheduled || state.mode || state.teaser) return;
+  state.teaserScheduled=true;
+  later(function(){ state.teaserScheduled=false; startTeaser(); }, ms);
+}
 function scheduleIdleStink(){
   later(function(){
     if(!state.mode && !state.teaser){
@@ -557,6 +571,17 @@ document.addEventListener("keydown",function(e){
   if(e.key==="Escape" && state.mode) endGame(false);
 });
 window.addEventListener("load",function(){
+  try{
+    if(window.ui && window.ui.newGame && !window.ui.newGame.__flyHooked){
+      var _origNewGame = window.ui.newGame;
+      window.ui.newGame = function(){
+        var r = _origNewGame.apply(this, arguments);
+        try{ if(!state.mode && !state.teaser){ state.teaserDone=false; scheduleTeaser(15000+Math.random()*15000); } }catch(e){}
+        return r;
+      };
+      window.ui.newGame.__flyHooked = true;
+    }
+  }catch(e){}
   var testMode = /[?&]flytest=1/.test(location.search);
   scheduleTeaser(testMode ? 12000 : 15000+Math.random()*30000);
   scheduleIdleStink();
