@@ -455,7 +455,7 @@ function endTeaser(silent){
   /* Once per card game: no reschedule here. A new deal (ui.newGame) resets it. */
 }
 function startTeaser(){
-  if(state.mode||state.teaser||state.teaserDone) return;
+  if(state.mode||state.teaser||state.teaserDone||!crappyUnlocked()) return;
   state.teaserScheduled=false;
   window.__flyActive=true;
   injectCSS(); state.teaser=true;
@@ -492,6 +492,8 @@ function startTeaser(){
   later(function(){ if(state.teaser) endTeaser(false); }, 240000);
 }
 function scheduleTeaser(ms){
+  /* Fly gate: NO flies until Crappy has joined (first win). */
+  if(!crappyUnlocked()) return;
   if(state.teaserDone || state.teaserScheduled || state.mode || state.teaser) return;
   state.teaserScheduled=true;
   later(function(){ state.teaserScheduled=false; startTeaser(); }, ms);
@@ -576,10 +578,21 @@ window.addEventListener("load",function(){
       var _origNewGame = window.ui.newGame;
       window.ui.newGame = function(){
         var r = _origNewGame.apply(this, arguments);
-        try{ if(!state.mode && !state.teaser){ state.teaserDone=false; scheduleTeaser(120000+Math.random()*360000); } }catch(e){}
+        try{ if(!state.mode && !state.teaser && crappyUnlocked()){ state.teaserDone=false; scheduleTeaser(120000+Math.random()*360000); } }catch(e){}
         return r;
       };
       window.ui.newGame.__flyHooked = true;
+    }
+  }catch(e){}
+  try{
+    if(window.ui && window.ui.unlockPoop && !window.ui.unlockPoop.__flyHooked){
+      var _origUnlockPoop = window.ui.unlockPoop;
+      window.ui.unlockPoop = function(){
+        var r = _origUnlockPoop.apply(this, arguments);
+        try{ if(crappyUnlocked() && !state.mode && !state.teaser){ state.teaserDone=false; scheduleTeaser(120000+Math.random()*360000); } }catch(e){}
+        return r;
+      };
+      window.ui.unlockPoop.__flyHooked = true;
     }
   }catch(e){}
   var testMode = /[?&]flytest=1/.test(location.search);
