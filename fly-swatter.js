@@ -363,9 +363,24 @@ function crappyWarOn(){
     if(window.ui) window.ui.poopSay("Let's get 'em, Laura! I'm going to war!", 3000);
   }catch(e){}
 }
+/* War firing flash: on a swat, Crappy shows the firing image for a beat, then back to aiming. */
+function crappyFireFlash(){
+  try{
+    if(!state.warAim) return;
+    var b=$("poopbuddy"); if(!b) return;
+    var img=b.querySelector("img"); if(!img) return;
+    img.src="assets/fly/crappy-war-fire.webp"; img.dataset.face="war-fire";
+    if(state.fireT) clearTimeout(state.fireT);
+    state.fireT=setTimeout(function(){
+      try{ var bb=$("poopbuddy"); var im=bb&&bb.querySelector("img");
+        if(im && state.warAim){ im.src="assets/fly/crappy-war-aim.webp"; im.dataset.face="war"; } }catch(e){}
+    }, 350);
+  }catch(e){}
+}
 function crappyWarOff(){
   try{
     if(state.warWander){ clearInterval(state.warWander); state.warWander=null; }
+    if(state.fireT){ clearTimeout(state.fireT); state.fireT=null; }
     var b=$("poopbuddy"); if(!b) return;
     try{
       var _img=b.querySelector("img");
@@ -561,7 +576,7 @@ document.addEventListener("pointerdown",function(e){
     if(hit.typeName==="fast"){ try{ showTaunt(hit.x+hit.type.size/2, hit.y, "BOOM!"); }catch(e){} }
     if(hit.typeName==="bonus") playSfx("bonus-chime", 0.8);
     if(hit.typeName==="sleepy") state.sleepyCount=Math.max(state.sleepyCount,1);
-    removeFly(hit); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
+    removeFly(hit); if(state.warAim) crappyFireFlash(); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
     if(crappyUnlocked() && state.swats%5===0){
       try{
         if(state.warAim){ window.ui.poopSay(WAR_LINES[(Math.random()*WAR_LINES.length)|0], 2500); }
