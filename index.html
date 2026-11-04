@@ -3728,6 +3728,13 @@ class UI {
     this.idleT = setTimeout(()=>this.onIdle(), CUSTOM.idleSec*1000);
   }
   onIdle(){
+    if(window.__flyActive || document.getElementById('fly-shield') || document.getElementById('fly-entry')){
+      /* Fly v3: idle timer is paused while a fly teaser/game is running —
+         no idle nags, no wiggle/sleep sounds, no idle surprises over the fly song.
+         Reschedule silently; the next onIdle after the fly ends runs normally. */
+      this.idleT=setTimeout(()=>this.onIdle(), CUSTOM.idleSec*1000);
+      return;
+    }
     this.idleTimeSec = (this.idleTimeSec || 0) + CUSTOM.idleSec;
     const lines=CUSTOM.idleLines;
     this.say(lines[Math.min(this.idleStage,lines.length-1)]);

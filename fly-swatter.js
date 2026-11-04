@@ -1,3 +1,7 @@
+/* Fly Swatter mini-game v3 — TEST COPY ONLY (solitaire-fly-v3, NOT live).
+   v3: idle suppressed during teaser/game, final-60 swarm, Crappy war gear
+   (WWI helmet + rifle, COSMETIC ONLY — no score, no kills), arcade
+   ALLLLRIGHT! thresholds, heavier smash, buzz swap-ready. */
 /* Fly Swatter mini-game v2 — TEST COPY ONLY (solitaire-fly-test-v2).
    Standalone overlay: the solitaire engine/UI code is NOT modified.
    Board lock is a shield div over the board, not a change to card handlers,
@@ -11,7 +15,7 @@
 "use strict";
 var GAME_SECONDS = 120;
 var state = { mode:false, teaser:false, score:0, swats:0, streak:0, best:0,
-  timeLeft:GAME_SECONDS, flies:[], timers:[], raf:0, song:null, buzz:null,
+  timeLeft:GAME_SECONDS, flies:[], timers:[], raf:0, song:null, buzz:null, warSaved:null, thresholdsHit:{}, swarmAnnounced:false,
   buzzSynth:null, buzzCtx:null, startAt:0, lastGoldAt:-999, sleepyCount:0,
   dda:false, endReason:"", cheerCount:0 };
 var TAUNTS = ["Missed me!","Too slow!","Nyah nyah!","Ha! Missed!"];
@@ -26,8 +30,8 @@ var TYPES = {
 var PHASES = [
   [30, 2000, 1, 85, 10, 5, 1.0, 1.5, 1.2],
   [60, 1750, 2, 75, 17, 8, 1.0, 1.8, 1.4],
-  [90, 1500, 3, 70, 20, 10, 1.1, 2.0, 1.4],
-  [120, 1250, 3, 65, 22, 13, 1.1, 2.0, 1.4]
+  [90, 1000, 4, 65, 22, 13, 1.15, 2.0, 1.4],
+  [120, 750, 5, 60, 25, 15, 1.3, 2.2, 1.5]
 ];
 function phaseFor(elapsed){
   for(var i=0;i<PHASES.length;i++){ if(elapsed < PHASES[i][0]) return PHASES[i]; }
@@ -36,10 +40,11 @@ function phaseFor(elapsed){
 function elapsed(){ return state.mode ? (performance.now()-state.startAt)/1000 : 0; }
 function phaseSpeed(typeName){
   var p = phaseFor(elapsed());
+  var finalBoost = (state.mode && state.timeLeft<=60) ? 1.2 : 1.0;
   var idx = typeName==="fast"?7:(typeName==="bonus"?8:(typeName==="sleepy"?6:6));
   var sp = typeName==="sleepy" ? 0.7 : p[idx];
   if(state.dda) sp *= 0.9;
-  return sp;
+  return sp * finalBoost;
 }
 function $(id){ return document.getElementById(id); }
 function crappyUnlocked(){
@@ -78,6 +83,19 @@ function injectCSS(){
     "#fly-end h2{font-size:min(40px,8vw);margin:0 0 8px;} #fly-end p{font-size:22px;margin:8px 0;}",
     "#fly-end button{font-size:22px;font-weight:700;padding:12px 20px;margin:8px;border-radius:12px;border:2px solid #4a3418;background:#ffe699;color:#4a3418;cursor:pointer;}",
     "#poopbuddy.fly-panic{animation:flyPanic .5s ease-in-out infinite !important;}",
+    "#poopbuddy.fly-war{z-index:205 !important;}",
+    "#poopbuddy.fly-war img{animation:flyWarBob .7s ease-in-out infinite !important;}",
+    "@keyframes flyWarBob{0%,100%{transform:rotate(-4deg) translateY(0);}50%{transform:rotate(5deg) translateY(-6px);}}",
+    ".crappy-war-gear{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:3;}",
+    ".crappy-war-gear svg{width:100%;height:100%;display:block;overflow:visible;}",
+    "#fly-hud.fly-chaos{background:rgba(120,0,0,.75);}",
+    "#fly-hud.fly-chaos .fly-time{color:#ff5252;animation:flyPulse .4s ease-in-out infinite;}",
+    "#fly-arcade{position:fixed;inset:0;z-index:240;display:flex;align-items:center;justify-content:center;pointer-events:none;}",
+    "#fly-arcade span{font-family:Georgia,serif;font-weight:900;font-size:min(88px,16vw);color:#ffe699;text-align:center;text-shadow:0 0 18px #ff5722,0 6px 24px rgba(0,0,0,.9);transform:rotate(-4deg) scale(1);animation:flyArcadePop .9s cubic-bezier(.2,1.6,.4,1) forwards;}",
+    "@keyframes flyArcadePop{0%{transform:rotate(-4deg) scale(.3);opacity:0;}30%{transform:rotate(-4deg) scale(1.25);opacity:1;}100%{transform:rotate(-4deg) scale(1);opacity:0;}}",
+    ".fly-bug2.fly-splat img{width:120px;height:90px;}",
+    "#fly-shield.fly-shake{animation:flyShake .25s linear;}",
+    "@keyframes flyShake{0%,100%{transform:translate(0,0);}25%{transform:translate(-4px,3px);}75%{transform:translate(4px,-3px);}}",
     "@keyframes flyPanic{0%,100%{transform:rotate(0) translateY(0);}25%{transform:rotate(-14deg) translateY(-8px);}50%{transform:rotate(12deg) translateY(0);}75%{transform:rotate(-8deg) translateY(-6px);}}",
     ".fly-stink{position:absolute;left:50%;top:-18px;transform:translateX(-50%);z-index:96;pointer-events:none;color:#7ed957;font-size:26px;font-weight:900;letter-spacing:2px;animation:flyStink 3s ease-out forwards;text-shadow:0 0 6px #2e7d32;}",
     "@keyframes flyStink{0%{opacity:0;transform:translateX(-50%) translateY(8px);}20%{opacity:1;}100%{opacity:0;transform:translateX(-50%) translateY(-26px);}}"
@@ -96,12 +114,20 @@ function playSfx(name, vol, rate){
 function startBuzz(){
   if(state.buzz) return;
   try{
-    var a=new Audio("assets/fly/fly-buzz-loop.mp3");
+    var a=new Audio("assets/fly/fly-buzz-real.mp3");
     a.loop=true; a.volume=0.35; a.id="fly-buzz";
-    a.addEventListener("error", function(){ startBuzzSynth(); });
+    a.addEventListener("error",function(){
+      if(state.buzz!==a) return;
+      try{
+        var f=new Audio("assets/fly/fly-buzz-loop.mp3");
+        f.loop=true; f.volume=0.35; f.id="fly-buzz";
+        f.addEventListener("error",function(){ startBuzzSynth(); });
+        document.body.appendChild(f); state.buzz=f;
+        var pp=f.play(); if(pp&&pp.catch) pp.catch(function(){ startBuzzSynth(); });
+      }catch(e){ startBuzzSynth(); }
+    });
     document.body.appendChild(a); state.buzz=a;
-    var p=a.play(); if(p&&p.catch) p.catch(function(){ startBuzzSynth(); });
-    /* audibility check hook: test can read state.buzz.paused / currentTime */
+    var p=a.play(); if(p&&p.catch) p.catch(function(){});
   }catch(e){ startBuzzSynth(); }
 }
 function startBuzzSynth(){
@@ -150,7 +176,7 @@ function spawnFly(typeName, teaser){
   var f={el:el, type:t, typeName:typeName, x:x, y:y, px:x, py:y,
     dartUntil:0, teaser:!!teaser, bornAt:performance.now(), burstSeed:Math.random()*700,
     id:(state.flySeq=(state.flySeq||0)+1)};
-  state.flies.push(f);
+  state.flies.push(f); if(state.buzz && state.buzz.volume!==undefined){ try{ state.buzz.volume=Math.min(0.6, 0.30 + state.flies.length*0.05); }catch(e){} }
   if(typeName==="bonus") state.lastGoldAt=elapsed();
   return f;
 }
@@ -177,6 +203,14 @@ function splatAt(x,y,pts){
   later(function(){ try{d.remove();t.remove();}catch(e){} },1500);
 }
 function updateHUD(){
+  var hud=$("fly-hud"); if(hud) hud.classList.toggle("fly-chaos", state.mode && state.timeLeft<=60);
+  if(state.mode && state.timeLeft===60 && !state.swarmAnnounced){
+    state.swarmAnnounced=true;
+    var ann=document.createElement("div"); ann.id="fly-announce";
+    ann.innerHTML='<span>SWARM TIME!</span>'; document.body.appendChild(ann);
+    later(function(){ try{ann.remove();}catch(e){} },2000);
+    playSfx("bonus-chime", 0.9);
+  }
   var s=$("fly-score"), w=$("fly-swats"), tm=$("fly-time");
   if(s) s.textContent="Score: "+state.score;
   if(w) w.textContent="Swats: "+state.swats;
@@ -242,24 +276,105 @@ function spawnTimer(){
   /* Quiet DDA safety net: 0 swats after 45 s -> speeds -10%, extra regular. */
   if(el>=45 && state.swats===0 && !state.dda){
     state.dda=true;
-    if(state.flies.length<4) spawnFly("regular",false);
+    if(state.flies.length<5) spawnFly("regular",false);
   }
   var max = el>=15 ? p[2] : 1;
   /* Gold pity: no gold in 45 s, or last 10 s with no gold on screen -> force one. */
   var hasBonus=state.flies.some(function(f){return f.typeName==="bonus";});
   var goldDue = (el-state.lastGoldAt>45) || (state.timeLeft<=10 && !hasBonus);
-  if(goldDue && !hasBonus && state.flies.length<4){
+  if(goldDue && !hasBonus && state.flies.length<5){
     spawnFly("bonus",false);
   } else if(state.flies.length<max){
     spawnFly(pickType(),false);
   }
   later(spawnTimer, p[1]);
 }
+
+function crappyWarOn(){
+  try{
+    if(!crappyUnlocked()) return;
+    var b=$("poopbuddy"); if(!b) return;
+    state.warSaved={right:b.style.right, bottom:b.style.bottom, z:b.style.zIndex};
+    if(window.ui) window.ui.poopFace("panic");
+    b.style.display="block";
+    b.style.right=Math.max(8,innerWidth-170)+"px";
+    b.style.bottom="18px";
+    b.style.zIndex="205";
+    b.classList.add("fly-war");
+    if(!b.querySelector(".crappy-war-gear")){
+      var g=document.createElement("div"); g.className="crappy-war-gear";
+      g.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true">'
+        +'<ellipse cx="50" cy="22" rx="38" ry="10" fill="#5a4a2e" stroke="#2e2412" stroke-width="2"/>'
+        +'<path d="M20 22 Q50 -6 80 22 Q50 30 20 22" fill="#6b5a35" stroke="#2e2412" stroke-width="2"/>'
+        +'<rect x="44" y="8" width="12" height="6" fill="#3e3220"/>'
+        +'<line x1="18" y1="88" x2="82" y2="28" stroke="#3a2a12" stroke-width="7" stroke-linecap="round"/>'
+        +'<line x1="74" y1="36" x2="88" y2="22" stroke="#1a1a1a" stroke-width="5" stroke-linecap="round"/>'
+        +'<rect x="58" y="48" width="10" height="14" fill="#5a3a1a" transform="rotate(38 63 55)"/>'
+        +'</svg>';
+      b.appendChild(g);
+    }
+    if(window.ui) window.ui.poopSay("Let's get 'em, Laura! I'm going to war!", 3000);
+  }catch(e){}
+}
+function crappyWarOff(){
+  try{
+    var b=$("poopbuddy"); if(!b) return;
+    var g=b.querySelector(".crappy-war-gear"); if(g) g.remove();
+    b.classList.remove("fly-war");
+    if(state.warSaved){ b.style.right=state.warSaved.right; b.style.bottom=state.warSaved.bottom; b.style.zIndex=state.warSaved.z; state.warSaved=null; }
+    if(crappyUnlocked() && window.ui) window.ui.poopFace("idle");
+  }catch(e){}
+}
+function arcadeAllRight(text){
+  try{
+    var old=$("fly-arcade"); if(old) old.remove();
+    var d=document.createElement("div"); d.id="fly-arcade";
+    d.innerHTML='<span>'+text+'</span>'; document.body.appendChild(d);
+    setTimeout(function(){ try{d.remove();}catch(e){} },950);
+    /* Voice: try the wired clip first, fall back to built-in speech, then just the sting. */
+    var a=new Audio("assets/fly/arcade-allright.mp3");
+    a.volume=0.9;
+    a.addEventListener("error",function(){
+      try{
+        if(window.speechSynthesis){
+          var u=new SpeechSynthesisUtterance("All right!");
+          u.rate=0.85; u.pitch=0.6; u.volume=1;
+          window.speechSynthesis.speak(u);
+        }
+      }catch(e){}
+    });
+    var p=a.play(); if(p&&p.catch) p.catch(function(){});
+    playSfx("bonus-chime", 0.9);
+  }catch(e){}
+}
+function checkThresholds(){
+  var t=[100,250,500,1000];
+  for(var i=0;i<t.length;i++){
+    if(state.score>=t[i] && !state.thresholdsHit[t[i]]){
+      state.thresholdsHit[t[i]]=true;
+      arcadeAllRight(t[i]>=500 ? "ALLLLRIGHT!!" : "ALL RIGHT!");
+    }
+  }
+}
+function smashThump(){
+  try{
+    var Ctx=window.AudioContext||window.webkitAudioContext; if(!Ctx) return;
+    var ctx=new Ctx(); if(ctx.state==="suspended") ctx.resume();
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type="sine"; o.frequency.setValueAtTime(140,ctx.currentTime);
+    o.frequency.exponentialRampToValueAtTime(40,ctx.currentTime+0.18);
+    g.gain.setValueAtTime(0.5,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.22);
+    o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+0.25);
+  }catch(e){}
+}
 function startGame(){
   if(state.mode) return;
+  window.__flyActive=true;
   endTeaser(true);
+  crappyWarOn();
   state.mode=true; state.score=0; state.swats=0; state.streak=0; state.sleepyCount=0;
-  state.dda=false; state.timeLeft=GAME_SECONDS; state.startAt=performance.now();
+  state.dda=false; state.timeLeft=GAME_SECONDS; state.startAt=performance.now(); state.thresholdsHit={}; state.swarmAnnounced=false;
   state.lastGoldAt=0; state.endReason="";
   injectCSS();
   var shield=document.createElement("div"); shield.id="fly-shield"; document.body.appendChild(shield);
@@ -288,7 +403,7 @@ function startGame(){
 }
 function endGame(timedOut){
   if(!state.mode) return;
-  state.mode=false; state.endReason=timedOut?"timed":"early";
+  state.mode=false; window.__flyActive=false; crappyWarOff(); state.endReason=timedOut?"timed":"early";
   clearInterval(state.tick);
   cancelAnimationFrame(state.raf);
   state.flies.slice().forEach(removeFly);
@@ -321,7 +436,7 @@ function endGame(timedOut){
   $("fly-done").addEventListener("click",function(){ end.remove(); });
 }
 function endTeaser(silent){
-  state.teaser=false;
+  state.teaser=false; if(!silent) window.__flyActive=false;
   cancelAnimationFrame(state.raf);
   state.flies.slice().forEach(function(f){ if(f.teaser) removeFly(f); });
   stopBuzz();
@@ -331,6 +446,7 @@ function endTeaser(silent){
 }
 function startTeaser(){
   if(state.mode||state.teaser) return;
+  window.__flyActive=true;
   injectCSS(); state.teaser=true;
   spawnFly("regular",true);
   startBuzz();
@@ -372,6 +488,7 @@ document.addEventListener("pointermove",function(e){
 },true);
 document.addEventListener("pointerdown",function(e){
   if(!state.mode) return;
+  if(e.target.closest && e.target.closest("#poopbuddy")) return;
   if(e.target.closest && (e.target.closest("#fly-hud")||e.target.closest("#fly-end"))) return;
   e.preventDefault(); e.stopPropagation();
   var sw=$("fly-swatter"); if(sw) sw.classList.add("smacked");
@@ -396,7 +513,7 @@ document.addEventListener("pointerdown",function(e){
     playSfx("fly-ouch", 0.8, rate);
     if(hit.typeName==="bonus") playSfx("bonus-chime", 0.8);
     if(hit.typeName==="sleepy") state.sleepyCount=Math.max(state.sleepyCount,1);
-    removeFly(hit); updateHUD();
+    removeFly(hit); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
     if(crappyUnlocked() && state.swats%5===0){
       try{ window.ui.poopFace("celebrate"); window.ui.poopSay(CHEERS[(Math.random()*CHEERS.length)|0], 2500); }catch(e){}
     }
