@@ -2129,6 +2129,10 @@ class Familiar {
   renderBar(){
     const wrap=$('#famWrap'); if(!wrap) return;
     const bar=$('#famBar'); if(!bar) return;
+    /* Poop gate: no bar at all until Crappy arrives on a first win.
+       (fam_lvl defaults to Lv.1 even when nothing is unlocked, so the
+       level alone must never show the bar.) */
+    if(!store.get('poop_arrived', false)){ bar.innerHTML=''; bar.classList.remove('show'); this.updateVisibility(); return; }
     bar.innerHTML='';
     this.unlocked.forEach(n=>{
       const d=document.createElement('div');
@@ -2143,7 +2147,7 @@ class Familiar {
   // the whole pet corner stays hidden until the first familiar is unlocked (no spoilers)
   updateVisibility(){
     const wrap=$('#famWrap'); if(!wrap) return;
-    wrap.style.display = this.unlocked.length>0 ? '' : 'none';
+    wrap.style.display = (this.unlocked.length>0 && store.get('poop_arrived', false)) ? '' : 'none';
   }
   initUI(){
     const wrap=document.createElement('div'); wrap.id='famWrap';
