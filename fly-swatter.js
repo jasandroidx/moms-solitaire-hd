@@ -20,6 +20,7 @@ var state = { mode:false, teaser:false, score:0, swats:0, streak:0, best:0,
   dda:false, endReason:"", cheerCount:0 };
 var TAUNTS = ["Missed me!","Too slow!","Nyah nyah!","Ha! Missed!"];
 var CHEERS = ["You got it!","Take THAT, flies!","Nice one!","Swat-tastic!"];
+var WAR_LINES = ["Buzz off!","Get 'em, Laura!","Not on my watch, fly!","I got your back, Laura!","Take that, you little pest!","SWARM TIME! Hold on, Laura!"];
 var TYPES = {
   regular:{img:"assets/fly/fly-regular-128.png", pts:10, size:64, dart:140, name:"regular"},
   fast:{img:"assets/fly/fly-fast-128.png", pts:25, size:64, dart:220, name:"fast"},
@@ -111,24 +112,24 @@ function playSfx(name, vol, rate){
     return a;
   }catch(e){ return null; }
 }
+var JASON_BUZZ = ["assets/fly/fly-buzz-jason1.mp3","assets/fly/fly-buzz-jason2.mp3","assets/fly/fly-buzz-jason3.mp3"];
+var JASON_BUZZ_LAST = -1;
+function playNextBuzz(){
+  try{
+    var idx = (Math.random()*JASON_BUZZ.length)|0;
+    if(JASON_BUZZ.length>1 && idx===JASON_BUZZ_LAST) idx=(idx+1)%JASON_BUZZ.length;
+    JASON_BUZZ_LAST=idx;
+    var a=new Audio(JASON_BUZZ[idx]);
+    a.loop=false; a.volume=0.15; a.id="fly-buzz";
+    a.addEventListener("ended",function(){ if(state.mode||state.teaser) playNextBuzz(); });
+    a.addEventListener("error",function(){ if(state.buzz===a) startBuzzSynth(); });
+    document.body.appendChild(a); state.buzz=a;
+    var pp=a.play(); if(pp&&pp.catch) pp.catch(function(){});
+  }catch(e){ startBuzzSynth(); }
+}
 function startBuzz(){
   if(state.buzz) return;
-  try{
-    var a=new Audio("assets/fly/fly-buzz-real.mp3");
-    a.loop=true; a.volume=0.35; a.id="fly-buzz";
-    a.addEventListener("error",function(){
-      if(state.buzz!==a) return;
-      try{
-        var f=new Audio("assets/fly/fly-buzz-loop.mp3");
-        f.loop=true; f.volume=0.35; f.id="fly-buzz";
-        f.addEventListener("error",function(){ startBuzzSynth(); });
-        document.body.appendChild(f); state.buzz=f;
-        var pp=f.play(); if(pp&&pp.catch) pp.catch(function(){ startBuzzSynth(); });
-      }catch(e){ startBuzzSynth(); }
-    });
-    document.body.appendChild(a); state.buzz=a;
-    var p=a.play(); if(p&&p.catch) p.catch(function(){});
-  }catch(e){ startBuzzSynth(); }
+  playNextBuzz();
 }
 function startBuzzSynth(){
   if(state.buzzSynth || state.buzzCtx) return;
@@ -176,7 +177,7 @@ function spawnFly(typeName, teaser){
   var f={el:el, type:t, typeName:typeName, x:x, y:y, px:x, py:y,
     dartUntil:0, teaser:!!teaser, bornAt:performance.now(), burstSeed:Math.random()*700,
     id:(state.flySeq=(state.flySeq||0)+1)};
-  state.flies.push(f); if(state.buzz && state.buzz.volume!==undefined){ try{ state.buzz.volume=Math.min(0.6, 0.30 + state.flies.length*0.05); }catch(e){} }
+  state.flies.push(f); if(state.buzz && state.buzz.volume!==undefined){ try{ state.buzz.volume=Math.min(0.20, 0.12 + state.flies.length*0.02); }catch(e){} }
   if(typeName==="bonus") state.lastGoldAt=elapsed();
   return f;
 }
@@ -296,12 +297,16 @@ function crappyWarOn(){
     var b=$("poopbuddy"); if(!b) return;
     state.warSaved={right:b.style.right, bottom:b.style.bottom, z:b.style.zIndex};
     if(window.ui) window.ui.poopFace("panic");
+    try{
+      var _img=b.querySelector("img");
+      if(_img){ state.warImgSaved={src:_img.src, face:_img.dataset.face}; _img.src="assets/fly/crappy-war-aim.webp"; _img.dataset.face="war"; state.warAim=true; }
+    }catch(e){}
     b.style.display="block";
     b.style.right=Math.max(8,innerWidth-170)+"px";
     b.style.bottom="18px";
     b.style.zIndex="205";
     b.classList.add("fly-war");
-    if(!b.querySelector(".crappy-war-gear")){
+    if(!state.warAim && !b.querySelector(".crappy-war-gear")){
       var g=document.createElement("div"); g.className="crappy-war-gear";
       g.innerHTML='<svg viewBox="0 0 100 100" aria-hidden="true">'
         +'<ellipse cx="50" cy="22" rx="38" ry="10" fill="#5a4a2e" stroke="#2e2412" stroke-width="2"/>'
@@ -319,6 +324,11 @@ function crappyWarOn(){
 function crappyWarOff(){
   try{
     var b=$("poopbuddy"); if(!b) return;
+    try{
+      var _img=b.querySelector("img");
+      if(_img && state.warImgSaved){ _img.src=state.warImgSaved.src; _img.dataset.face=state.warImgSaved.face; state.warImgSaved=null; }
+      state.warAim=false;
+    }catch(e){}
     var g=b.querySelector(".crappy-war-gear"); if(g) g.remove();
     b.classList.remove("fly-war");
     if(state.warSaved){ b.style.right=state.warSaved.right; b.style.bottom=state.warSaved.bottom; b.style.zIndex=state.warSaved.z; state.warSaved=null; }
@@ -511,11 +521,15 @@ document.addEventListener("pointerdown",function(e){
     playSfx("swat", 0.8, rate*(1+Math.min(state.streak,5)*0.02));
     playSfx("splat", 0.8, rate);
     playSfx("fly-ouch", 0.8, rate);
+    if(hit.typeName==="fast"){ try{ showTaunt(hit.x+hit.type.size/2, hit.y, "BOOM!"); }catch(e){} }
     if(hit.typeName==="bonus") playSfx("bonus-chime", 0.8);
     if(hit.typeName==="sleepy") state.sleepyCount=Math.max(state.sleepyCount,1);
     removeFly(hit); updateHUD(); smashThump(); var sh=$('fly-shield'); if(sh){ sh.classList.remove('fly-shake'); void sh.offsetWidth; sh.classList.add('fly-shake'); } checkThresholds();
     if(crappyUnlocked() && state.swats%5===0){
-      try{ window.ui.poopFace("celebrate"); window.ui.poopSay(CHEERS[(Math.random()*CHEERS.length)|0], 2500); }catch(e){}
+      try{
+        if(state.warAim){ window.ui.poopSay(WAR_LINES[(Math.random()*WAR_LINES.length)|0], 2500); }
+        else { window.ui.poopFace("celebrate"); window.ui.poopSay(CHEERS[(Math.random()*CHEERS.length)|0], 2500); }
+      }catch(e){}
     }
   } else {
     state.streak=0; /* silent break: counter resets, no message, no penalty */
