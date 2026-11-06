@@ -1624,6 +1624,8 @@ class Renderer {
       col.innerHTML='<div class="slot" style="height:var(--ch)"></div>';
       this.tabEl.appendChild(col); this.tabCols.push(col);
     }
+    // Cached array of all valid drop target piles (4 foundations + 7 tableau columns) to avoid querySelectorAll during drag-and-drop
+    this.allPiles = [...this.foundPiles, ...this.tabCols];
     this.selected=null; // {zone,col} — R1 tap-to-select
     this.hintCard=null;
   }
@@ -3583,33 +3585,49 @@ class UI {
     this.updateDropHint(d);
   }
   updateDropHint(d){
-    document.querySelectorAll('.drop-ok').forEach(p=>p.classList.remove('drop-ok'));
-    if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length) return;
+    if(!d.ghosts||!d.ghosts.length||!d.seq||!d.seq.length){
+      if(this._dropHintPile){ this._dropHintPile.classList.remove('drop-ok'); this._dropHintPile=null; }
+      return;
+    }
     // Ordering/connection constraint: ghost element must be connected to DOM before measuring layout
-    if(!d.ghosts[0].isConnected) return;
+    if(!d.ghosts[0].isConnected){
+      if(this._dropHintPile){ this._dropHintPile.classList.remove('drop-ok'); this._dropHintPile=null; }
+      return;
+    }
     const gx=d.ghosts[0].getBoundingClientRect();
     const pile=this.pileAt(gx.left+gx.width/2,gx.top+gx.height/2);
-    if(!pile) return;
-    const z=pile.dataset.zone, card=d.seq[0];
-    let ok=false;
-    if(z==='foundation'){ if(d.seq.length===1&&this.selIsTop(d.loc)) ok=this.eng.canPlaceOnFoundation(card); }
-    else if(z==='tableau'){
-      const toCol=+pile.dataset.col;
-      if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
+    let targetPile=null;
+    if(pile){
+      const z=pile.dataset.zone, card=d.seq[0];
+      let ok=false;
+      if(z==='foundation'){ if(d.seq.length===1&&this.selIsTop(d.loc)) ok=this.eng.canPlaceOnFoundation(card); }
+      else if(z==='tableau'){
+        const toCol=+pile.dataset.col;
+        if(!(d.loc.zone==='tableau'&&d.loc.col===toCol)) ok=this.eng.canPlaceOnTableau(d.seq,toCol);
+      }
+      if(ok) targetPile=pile;
     }
-    if(ok) pile.classList.add('drop-ok');
+    // Avoid document.querySelectorAll('.drop-ok') on every pointermove; update class only when active target changes
+    if(this._dropHintPile!==targetPile){
+      if(this._dropHintPile) this._dropHintPile.classList.remove('drop-ok');
+      if(targetPile) targetPile.classList.add('drop-ok');
+      this._dropHintPile=targetPile;
+    }
   }
-  // forgiving drop targeting: 16px of grace around every pile, nearest center wins
+  // forgiving drop targeting: 16px of grace around every pile, nearest center wins.
+  // Iterates over pre-cached view.allPiles (4 foundations + 7 tableau) instead of querying DOM repeatedly.
   pileAt(x,y){
     let best=null,bestD=Infinity;
-    document.querySelectorAll('.pile,.tcol').forEach(p=>{
+    const piles=(this.view&&this.view.allPiles)||document.querySelectorAll('.pile,.tcol');
+    for(let i=0;i<piles.length;i++){
+      const p=piles[i];
       // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
-      if(!p.isConnected) return;
+      if(!p.isConnected) continue;
       const r=p.getBoundingClientRect(), pad=16;
-      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
+      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) continue;
       const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
       if(d<bestD){ bestD=d; best=p; }
-    });
+    }
     return best;
   }
   // is this loc the top card of its pile (the only card a foundation can take)?
@@ -3625,6 +3643,7 @@ class UI {
     // Ordering/connection constraint: read ghost rect BEFORE clearing #draglayer; ensure ghost is connected
     const gx=(d&&d.ghosts&&d.ghosts[0]&&d.ghosts[0].isConnected)?d.ghosts[0].getBoundingClientRect():null;
     $('#draglayer').innerHTML='';
+    this._dropHintPile=null;
     document.querySelectorAll('.drag-src,.drop-ok').forEach(c=>{c.classList.remove('drag-src');c.classList.remove('drop-ok');});
     if(!d) return;
     if(cancelled){ return; } // system-cancelled gesture: drop silently, never convert to a tap
