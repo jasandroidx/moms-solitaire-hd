@@ -1672,32 +1672,40 @@ class Renderer {
     // Ordering/connection constraint: stockEl must be connected to DOM to read layout; fall back to 96 if detached/hidden
     const cw=(this.stockEl&&this.stockEl.isConnected?this.stockEl.getBoundingClientRect().width:0)||96;
     const ch=cw*1.4, offD=cw*0.15, offU=cw*0.32;
+    // Batch waste card DOM insertions into a DocumentFragment to minimize live DOM mutations
+    const wasteFrag=document.createDocumentFragment();
     show.forEach((c,i)=>{
       const el=this.cardEl(c,{x:i*cw*0.42,photo:ui.photoFor(c.id),backPat:pat});
       el.dataset.zone='waste'; el.dataset.wasteTop = (i===show.length-1)?'1':'0';
       if(i<show.length-1) el.style.pointerEvents='none';
-      this.wasteEl.appendChild(el);
+      wasteFrag.appendChild(el);
     });
+    this.wasteEl.appendChild(wasteFrag);
     // foundations
     SUITS.forEach((suit,i)=>{
       const p=this.foundPiles[i]; this.clearPile(p);
       const f=s.foundations[suit];
       if(f.length){ const el=this.cardEl(f[f.length-1],{photo:ui.photoFor(f[f.length-1].id),backPat:pat}); el.dataset.zone='foundation'; el.dataset.suit=suit; p.appendChild(el); }
     });
-    // tableau
+    // tableau: batch insertions via DocumentFragment and hoist movableSequence calculation
+    // to avoid evaluating the sequence backwards scan and array slicing for every card in the column
     s.tableau.forEach((col,ci)=>{
       const colEl=this.tabCols[ci]; this.clearPile(colEl);
       let y=0, step=0;
+      const isSel=this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci;
+      const selStart=isSel?(this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length):-1;
+      const colFrag=document.createDocumentFragment();
       col.forEach((c,idx)=>{
         const el=this.cardEl(c,{x:0,y,photo:ui.photoFor(c.id),backPat:pat});
         el.dataset.zone='tableau'; el.dataset.col=ci; el.dataset.idx=idx;
-        if(this.selected&&this.selected.zone==='tableau'&&this.selected.col===ci&&idx>=(this.selected.idx!=null?this.selected.idx:col.length-this.eng.movableSequence(ci).length))
+        if(isSel&&idx>=selStart)
           el.classList.add('selected');
         if(this.hintCard===c.id) el.classList.add('hintglow');
-        colEl.appendChild(el);
+        colFrag.appendChild(el);
         step=c.faceUp?offU:offD;
         y+=step;
       });
+      colEl.appendChild(colFrag);
       colEl.style.height=((col.length?y-step:0)+ch)+'px';
     });
     // waste selection + hint
