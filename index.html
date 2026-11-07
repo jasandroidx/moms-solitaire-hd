@@ -2672,17 +2672,24 @@ class UI {
     this._crapHist.push(pick); if(this._crapHist.length>5) this._crapHist.shift();
     return pick;
   }
+  crappyChatClose(){
+    const p=$('#chatPanel'); if(p&&p.classList.contains('open')){
+      p.classList.remove('open');
+      const b=$('#chatBtn'); if(b) b.focus();
+    }
+  }
   crappyChatInit(){
     if($('#chatBtn')) return;
-    const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy';
+    const btn=document.createElement('button'); btn.id='chatBtn'; btn.textContent='💬'; btn.title='Chat with Crappy'; btn.setAttribute('aria-label','Chat with Crappy');
     btn.onclick=()=>{ const p=$('#chatPanel'); p.classList.toggle('open'); try{ this.crappyChatBuild(); }catch(e){}
       try{ Sfx.file('assets/voices/poop-boop.mp3'); }catch(e){}
       if(p.classList.contains('open')&&!this._chatGreeted){ this._chatGreeted=true; this.crappyChatAdd('crappy', this.crappyReply('hello')); } };
     document.body.appendChild(btn);
     const panel=document.createElement('div'); panel.id='chatPanel';
-    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
+    panel.setAttribute('role','dialog'); panel.setAttribute('aria-label','Chat with Crappy');
+    panel.innerHTML='<div id="chatHead"><span>💩 Chat with Crappy</span><button id="chatClose" aria-label="Close chat">✕</button></div><div id="chatLog"></div><div id="chatChips"></div>';
     document.body.appendChild(panel);
-    $('#chatClose').onclick=()=>panel.classList.remove('open');
+    $('#chatClose').onclick=()=>this.crappyChatClose();
     this.crappyChatBuild();
     this.crappyChatUpdate();
   }
@@ -3513,6 +3520,8 @@ class UI {
       if(e.key==='Escape'){
         closeHelp();
         if($('#scopePop').classList.contains('show')) Scope.close();
+        const cp=$('#chatPanel');
+        if(cp&&cp.classList.contains('open')) this.crappyChatClose();
         return;
       }
       const k=e.key.toLowerCase();
