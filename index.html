@@ -3600,16 +3600,22 @@ class UI {
     if(ok) pile.classList.add('drop-ok');
   }
   // forgiving drop targeting: 16px of grace around every pile, nearest center wins
+  // Performance optimization: iterate over pre-indexed view arrays (foundPiles, tabCols)
+  // instead of calling document.querySelectorAll('.pile,.tcol') on every pointermove event.
   pileAt(x,y){
     let best=null,bestD=Infinity;
-    document.querySelectorAll('.pile,.tcol').forEach(p=>{
+    const piles = (this.view && this.view.foundPiles && this.view.tabCols)
+      ? this._targetPiles || (this._targetPiles = [...this.view.foundPiles, ...this.view.tabCols])
+      : document.querySelectorAll('.pile,.tcol');
+    for(let i=0;i<piles.length;i++){
+      const p=piles[i];
       // Ordering/connection constraint: skip detached or unrendered piles to avoid zero rect match
-      if(!p.isConnected) return;
+      if(!p.isConnected) continue;
       const r=p.getBoundingClientRect(), pad=16;
-      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) return;
+      if(x<r.left-pad||x>r.right+pad||y<r.top-pad||y>r.bottom+pad) continue;
       const dx=x-(r.left+r.width/2), dy=y-(r.top+r.height/2), d=dx*dx+dy*dy;
       if(d<bestD){ bestD=d; best=p; }
-    });
+    }
     return best;
   }
   // is this loc the top card of its pile (the only card a foundation can take)?
