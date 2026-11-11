@@ -358,10 +358,6 @@ class GameEngine {
   }
 }
 
-// Pre-allocated static suit arrays for safeF checks to avoid array allocations in hot search loops
-const OPP_SUITS_RED = ['spades', 'clubs'];
-const OPP_SUITS_BLACK = ['hearts', 'diamonds'];
-
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -392,24 +388,30 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   });
 
   const canF = (card, f) => { const p = f[card.suit]; return p.length ? top(p).rank === card.rank - 1 : card.rank === 1; };
-  // a card is safe to auto-foundation when both opposite-color lower cards are already home
+  // Zero-allocation safeF: direct property checks avoid array allocation and closure creation in hot loop
   const safeF = (card, f) => {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
-    return opp.every(s => f[s].length && top(f[s]).rank >= need);
+    const need = card.rank - 1;
+    if (card.red) {
+      const s = f.spades, c = f.clubs;
+      return s.length > 0 && top(s).rank >= need && c.length > 0 && top(c).rank >= need;
+    } else {
+      const h = f.hearts, d = f.diamonds;
+      return h.length > 0 && top(h).rank >= need && d.length > 0 && top(d).rank >= need;
+    }
   };
-  const canT = (seq, col) => {
-    if (!seq.length) return false;
-    const first = seq[0];
-    if (!col.length) return first.rank === 13;
+  // Direct card-to-column tableau placement check (avoids sequence array creation)
+  const canT = (card, col) => {
+    if (!col.length) return card.rank === 13;
     const t = top(col);
-    return t.faceUp && t.red !== first.red && t.rank === first.rank + 1;
+    return t.faceUp && t.red !== card.red && t.rank === card.rank + 1;
   };
-  const movSeq = col => {
+  // Zero-allocation index lookup for movable sequence start in tableau column
+  const movSeqStart = col => {
     let i = col.length - 1;
-    while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
-           col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
-    return (col[i] && col[i].faceUp) ? col.slice(i) : [];
+    if (i < 0 || !col[i].faceUp) return -1;
+    while (i > 0 && col[i - 1].faceUp && col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
+    return i;
   };
   const revealTop = col => {
     if (col.length && !top(col).faceUp) {
@@ -437,12 +439,18 @@ function isSolvable(dealState, drawCount, timeoutMs) {
       }
     }
   };
+  // Zero-allocation win check: direct sum and loop avoids array allocations and closures
   const won = s => {
-    let f = 0; for (const k of ['spades', 'hearts', 'diamonds', 'clubs']) f += s.foundations[k].length;
+    const f = s.foundations.spades.length + s.foundations.hearts.length + s.foundations.diamonds.length + s.foundations.clubs.length;
     if (f === 52) return true;
-    // everything free => the game's auto-finish guarantees the win (mirrors canAutoComplete)
     if (s.stock.length || s.waste.length) return false;
-    return s.tableau.every(col => col.every(c => c.faceUp));
+    for (let c = 0; c < 7; c++) {
+      const col = s.tableau[c];
+      for (let i = 0; i < col.length; i++) {
+        if (!col[i].faceUp) return false;
+      }
+    }
+    return true;
   };
 
   // Compact state key generator using String.fromCharCode to encode card IDs (0..51) into single characters.
@@ -478,7 +486,10 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     const k = key(cur);
     if (seen.has(k)) continue;
     seen.add(k);
-    const moves = [];
+
+    // Priority buckets (b2, b4, b6, b8, b10) avoid sorting and tuple array allocations
+    const b2 = [], b4 = [], b6 = [], b8 = [], b10 = [];
+
     for (let c = 0; c < 7; c++) { // tableau -> foundation
       const col = cur.tableau[c]; if (!col.length) continue;
       const t = top(col);
@@ -486,31 +497,31 @@ function isSolvable(dealState, drawCount, timeoutMs) {
         const n = cloneState(cur), card = n.tableau[c].pop();
         n.foundations[card.suit].push(card);
         revealTop(n.tableau[c]);
-        moves.push([10, n]);
+        b10.push(n);
       }
     }
     if (cur.waste.length) { // waste -> foundation
       const w = top(cur.waste);
-      if (canF(w, cur.foundations)) { const n = cloneState(cur); n.foundations[w.suit].push(n.waste.pop()); moves.push([10, n]); }
+      if (canF(w, cur.foundations)) { const n = cloneState(cur); n.foundations[w.suit].push(n.waste.pop()); b10.push(n); }
     }
     for (let a = 0; a < 7; a++) { // tableau -> tableau
       const col = cur.tableau[a]; if (!col.length) continue;
-      const seq = movSeq(col); if (!seq.length) continue;
-      const rs = col.length - seq.length, exposes = rs > 0 && !col[rs - 1].faceUp;
+      const idx = movSeqStart(col); if (idx < 0) continue;
+      const seqCard = col[idx], exposes = idx > 0 && !col[idx - 1].faceUp;
       for (let b = 0; b < 7; b++) {
-        if (a === b || !canT(seq, cur.tableau[b])) continue;
-        if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
-        const n = cloneState(cur), mv = n.tableau[a].splice(rs);
+        if (a === b || !canT(seqCard, cur.tableau[b])) continue;
+        if (seqCard.rank === 13 && idx === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
+        const n = cloneState(cur), mv = n.tableau[a].splice(idx);
         n.tableau[b].push(...mv);
         revealTop(n.tableau[a]);
-        moves.push([exposes ? 8 : 4, n]);
+        if (exposes) b8.push(n); else b4.push(n);
       }
     }
     if (cur.waste.length) { // waste -> tableau
       const w = top(cur.waste);
       for (let b = 0; b < 7; b++) {
-        if (!canT([w], cur.tableau[b])) continue;
-        const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); moves.push([6, n]);
+        if (!canT(w, cur.tableau[b])) continue;
+        const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); b6.push(n);
       }
     }
     if (cur.stock.length || cur.waste.length) { // draw / recycle
@@ -524,10 +535,15 @@ function isSolvable(dealState, drawCount, timeoutMs) {
           n.waste.push(flipUp(n.stock.pop()));
         }
       }
-      moves.push([2, n]);
+      b2.push(n);
     }
-    moves.sort((x, y) => x[0] - y[0]);
-    for (const m of moves) stack.push(m[1]);
+
+    // Push states in priority order so highest priority (b10) is popped off the LIFO stack first
+    for (let i = 0; i < b2.length; i++) stack.push(b2[i]);
+    for (let i = 0; i < b4.length; i++) stack.push(b4[i]);
+    for (let i = 0; i < b6.length; i++) stack.push(b6[i]);
+    for (let i = 0; i < b8.length; i++) stack.push(b8[i]);
+    for (let i = 0; i < b10.length; i++) stack.push(b10[i]);
   }
   return false;
 }
