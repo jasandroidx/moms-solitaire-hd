@@ -8,3 +8,7 @@
 ## 2026-10-02 - Cloned Element Offset Alignment in Magnifying Glass / Lens Tools
 **Learning:** When creating a magnifying lens by cloning DOM elements (`#felt`/`#board`) into an offset circular viewport (`.lview`), cloned elements inherit relative container metrics or inline styles unless explicitly reset (`position: absolute; left: 0; top: 0; margin: 0; width: 100%; height: 100%; transform: none; zoom: 1`).
 **Action:** Always enforce zeroed top/left offsets and scale resets on cloned DOM children inside zoom viewports to ensure precise alignment under the lens focal point.
+
+## 2026-10-03 - Accessible Toggle Drawers & Focus Restoration
+**Learning:** For non-native slide-out panels triggered by icon buttons, updating `aria-expanded`, directing focus to the panel's close button on open, and restoring focus back to the trigger button on close or `Escape` keypress prevents keyboard users from losing focus context.
+**Action:** Always pair `aria-expanded` toggles with explicit element focus management and `Escape` key handlers for non-native sliding drawers.
