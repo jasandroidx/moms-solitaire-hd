@@ -132,14 +132,22 @@ class GameEngine {
   // ---- helpers ----
   topOf(col) { return col[col.length - 1]; }
 
+  // Index where the face-up run starts at the top of a tableau column
+  _movableRunStart(colIdx) {
+    const col = this.state.tableau[colIdx];
+    let i = col.length - 1;
+    if (i < 0 || !col[i].faceUp) return col.length;
+    while (i > 0 && col[i - 1].faceUp &&
+           col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
+    return i;
+  }
+
   // face-up run at the top of a tableau column (the draggable sequence)
   movableSequence(colIdx) {
     const col = this.state.tableau[colIdx];
-    let i = col.length - 1;
-    while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
-           col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
-    if (!col[i] || !col[i].faceUp) return [];
-    return col.slice(i);
+    const start = this._movableRunStart(colIdx);
+    if (start >= col.length) return [];
+    return col.slice(start);
   }
 
   canPlaceOnTableau(cards, colIdx) {
@@ -222,7 +230,7 @@ class GameEngine {
     if (from.zone === 'waste') { const t = this.topOf(s.waste); cards = t && t.faceUp ? [t] : []; }
     else {
       const col = s.tableau[from.col];
-      const runStart = col.length - this.movableSequence(from.col).length;
+      const runStart = this._movableRunStart(from.col);
       const fromIdx = (from.idx != null && from.idx >= runStart) ? from.idx : runStart;
       cards = col.slice(fromIdx);
     }
@@ -398,18 +406,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
     return opp.every(s => f[s].length && top(f[s]).rank >= need);
   };
-  const canT = (seq, col) => {
-    if (!seq.length) return false;
-    const first = seq[0];
-    if (!col.length) return first.rank === 13;
+  const canT = (card, col) => {
+    if (!col.length) return card.rank === 13;
     const t = top(col);
-    return t.faceUp && t.red !== first.red && t.rank === first.rank + 1;
+    return t.faceUp && t.red !== card.red && t.rank === card.rank + 1;
   };
-  const movSeq = col => {
+  const movStart = col => {
     let i = col.length - 1;
-    while (i > 0 && col[i].faceUp && col[i - 1].faceUp &&
+    if (i < 0 || !col[i].faceUp) return -1;
+    while (i > 0 && col[i - 1].faceUp &&
            col[i - 1].rank === col[i].rank + 1 && col[i - 1].red !== col[i].red) i--;
-    return (col[i] && col[i].faceUp) ? col.slice(i) : [];
+    return i;
   };
   const revealTop = col => {
     if (col.length && !top(col).faceUp) {
@@ -438,11 +445,17 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
   };
   const won = s => {
-    let f = 0; for (const k of ['spades', 'hearts', 'diamonds', 'clubs']) f += s.foundations[k].length;
-    if (f === 52) return true;
-    // everything free => the game's auto-finish guarantees the win (mirrors canAutoComplete)
+    const f = s.foundations;
+    if (f.spades.length + f.hearts.length + f.diamonds.length + f.clubs.length === 52) return true;
     if (s.stock.length || s.waste.length) return false;
-    return s.tableau.every(col => col.every(c => c.faceUp));
+    const tab = s.tableau;
+    for (let c = 0; c < 7; c++) {
+      const col = tab[c];
+      for (let i = 0; i < col.length; i++) {
+        if (!col[i].faceUp) return false;
+      }
+    }
+    return true;
   };
 
   // Compact state key generator using String.fromCharCode to encode card IDs (0..51) into single characters.
@@ -495,11 +508,11 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     }
     for (let a = 0; a < 7; a++) { // tableau -> tableau
       const col = cur.tableau[a]; if (!col.length) continue;
-      const seq = movSeq(col); if (!seq.length) continue;
-      const rs = col.length - seq.length, exposes = rs > 0 && !col[rs - 1].faceUp;
+      const rs = movStart(col); if (rs < 0) continue;
+      const firstCard = col[rs], exposes = rs > 0 && !col[rs - 1].faceUp;
       for (let b = 0; b < 7; b++) {
-        if (a === b || !canT(seq, cur.tableau[b])) continue;
-        if (seq[0].rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
+        if (a === b || !canT(firstCard, cur.tableau[b])) continue;
+        if (firstCard.rank === 13 && rs === 0 && !cur.tableau[b].length) continue; // pointless king shuffle
         const n = cloneState(cur), mv = n.tableau[a].splice(rs);
         n.tableau[b].push(...mv);
         revealTop(n.tableau[a]);
@@ -509,7 +522,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
     if (cur.waste.length) { // waste -> tableau
       const w = top(cur.waste);
       for (let b = 0; b < 7; b++) {
-        if (!canT([w], cur.tableau[b])) continue;
+        if (!canT(w, cur.tableau[b])) continue;
         const n = cloneState(cur); n.tableau[b].push(n.waste.pop()); moves.push([6, n]);
       }
     }
