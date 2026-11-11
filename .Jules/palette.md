@@ -5,6 +5,11 @@
 ## 2025-10-02 - PWA ChromeOS & Double-Tap Support
 **Learning:** For Chromebook users, defining full Progressive Web App manifest.json standards and binding double-tap/double-click event listeners for auto-foundation moves provides a smooth native app experience.
 **Action:** Keep manifest properties synced with index.html link headers and ensure double-tap handlers preserve top-card foundation constraints.
+
 ## 2026-10-02 - Cloned Element Offset Alignment in Magnifying Glass / Lens Tools
 **Learning:** When creating a magnifying lens by cloning DOM elements (`#felt`/`#board`) into an offset circular viewport (`.lview`), cloned elements inherit relative container metrics or inline styles unless explicitly reset (`position: absolute; left: 0; top: 0; margin: 0; width: 100%; height: 100%; transform: none; zoom: 1`).
 **Action:** Always enforce zeroed top/left offsets and scale resets on cloned DOM children inside zoom viewports to ensure precise alignment under the lens focal point.
+
+## 2026-10-21 - Auto-focusing Primary Action on State Overlays
+**Learning:** For custom overlay screens (such as win overlays or end-of-game dialogs), explicitly moving focus to the primary action button (`#bAgain`) when the overlay becomes visible allows immediate keyboard activation and screen reader announcement without requiring extra tab navigation.
+**Action:** Always auto-focus the primary CTA button when showing non-modal or custom overlay dialogs.
