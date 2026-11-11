@@ -162,11 +162,16 @@ class GameEngine {
   isSafeForFoundation(card) {
     if (card.rank <= 2) return true;
     const need = card.rank - 1;
-    const opp = card.red ? ['spades', 'clubs'] : ['hearts', 'diamonds'];
-    return opp.every(s => {
-      const f = this.state.foundations[s];
-      return f.length && this.topOf(f).rank >= need;
-    });
+    const f = this.state.foundations;
+    if (card.red) {
+      const sp = f.spades, cl = f.clubs;
+      return sp.length > 0 && sp[sp.length - 1].rank >= need &&
+             cl.length > 0 && cl[cl.length - 1].rank >= need;
+    } else {
+      const ht = f.hearts, dm = f.diamonds;
+      return ht.length > 0 && ht[ht.length - 1].rank >= need &&
+             dm.length > 0 && dm[dm.length - 1].rank >= need;
+    }
   }
 
   _afterMove() {
@@ -358,10 +363,6 @@ class GameEngine {
   }
 }
 
-// Pre-allocated static suit arrays for safeF checks to avoid array allocations in hot search loops
-const OPP_SUITS_RED = ['spades', 'clubs'];
-const OPP_SUITS_BLACK = ['hearts', 'diamonds'];
-
 // ---- winnable-deal solver: depth-first search with safe-move reduction ----
 // Returns true if the given deal state can be played to a win. Timeout in
 // ms caps the search; on timeout it returns false (treat as unsolved).
@@ -395,8 +396,14 @@ function isSolvable(dealState, drawCount, timeoutMs) {
   // a card is safe to auto-foundation when both opposite-color lower cards are already home
   const safeF = (card, f) => {
     if (card.rank <= 2) return true;
-    const need = card.rank - 1, opp = card.red ? OPP_SUITS_RED : OPP_SUITS_BLACK;
-    return opp.every(s => f[s].length && top(f[s]).rank >= need);
+    const need = card.rank - 1;
+    if (card.red) {
+      const sp = f.spades, cl = f.clubs;
+      return sp.length > 0 && top(sp).rank >= need && cl.length > 0 && top(cl).rank >= need;
+    } else {
+      const ht = f.hearts, dm = f.diamonds;
+      return ht.length > 0 && top(ht).rank >= need && dm.length > 0 && top(dm).rank >= need;
+    }
   };
   const canT = (seq, col) => {
     if (!seq.length) return false;
@@ -471,7 +478,7 @@ function isSolvable(dealState, drawCount, timeoutMs) {
 
   const seen = new Set(), stack = [cloneState(dealState)];
   while (stack.length) {
-    if ((seen.size & 63) === 0 && Date.now() - t0 > timeoutMs) return false;
+    if ((seen.size & 255) === 0 && Date.now() - t0 > timeoutMs) return false;
     const cur = stack.pop();
     autoF(cur);
     if (won(cur)) return true;
