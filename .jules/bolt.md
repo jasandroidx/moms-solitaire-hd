@@ -9,3 +9,7 @@
 ## 2025-10-03 - Compact State Encoding & Copy-on-Write Card Cloning in DFS Solver
 **Learning:** In graph search algorithms for card games where card properties (`id`, `suit`, `rank`, `red`) are immutable, cloning all card objects on every state clone creates massive allocation overhead (~52 objects/clone). Replacing deep card cloning with shallow column array cloning (`col.slice()`) and copy-on-write flip helpers eliminates ~98% of temporary object allocations. Additionally, using `String.fromCharCode(card.id + (card.faceUp ? 128 : 0))` packs card ID and state into a single character, shrinking state key string length by ~64% (from ~180 to ~65 chars) and dramatically speeding up `Set.has`/`add` lookups. Combined, these changes boost solver throughput by ~1.93x (from ~97k states/sec to ~188k states/sec).
 **Action:** Use ASCII character packing for state key strings and copy-on-write reference sharing for immutable state elements during state-space searches.
+
+## 2025-10-04 - Cache Target Bounding Boxes During High-Frequency Drag Events
+**Learning:** Re-querying target drop zones (`document.querySelectorAll('.pile,.tcol')`) and calling `getBoundingClientRect()` on every `pointermove` during card dragging causes synchronous layout reflows and CPU overhead at 60fps. Pre-caching bounding boxes (`targetPilesCache`) at `startDrag` and performing offset arithmetic reduces layout thrashing to 0 during active drag gestures.
+**Action:** Cache DOM element positions at gesture start (`startDrag`) and clear them on gesture release (`onUp`).
