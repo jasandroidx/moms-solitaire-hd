@@ -64,28 +64,39 @@ function cloneCard(c) {
   return { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp };
 }
 
-// Optimized cloneState: ~40x faster than JSON.parse(JSON.stringify(s)), reducing move/undo latency
+// Fast array cloning for card arrays avoiding .map() callback overhead
+function cloneCardArray(arr) {
+  const len = arr.length;
+  const res = new Array(len);
+  for (let i = 0; i < len; i++) {
+    const c = arr[i];
+    res[i] = { id: c.id, suit: c.suit, rank: c.rank, red: c.red, faceUp: c.faceUp };
+  }
+  return res;
+}
+
+// Optimized cloneState: avoids Array.prototype.map function call overhead in history tracking
 function cloneState(s) {
   if (!s) return null;
-  const stock = s.stock.map(cloneCard);
-  const waste = s.waste.map(cloneCard);
-  const foundations = {
-    spades: s.foundations.spades.map(cloneCard),
-    hearts: s.foundations.hearts.map(cloneCard),
-    diamonds: s.foundations.diamonds.map(cloneCard),
-    clubs: s.foundations.clubs.map(cloneCard),
-  };
-  const tableau = s.tableau.map(col => col.map(cloneCard));
+  const tab = s.tableau;
   const res = {
-    stock,
-    waste,
-    foundations,
-    tableau,
+    stock: cloneCardArray(s.stock),
+    waste: cloneCardArray(s.waste),
+    foundations: {
+      spades: cloneCardArray(s.foundations.spades),
+      hearts: cloneCardArray(s.foundations.hearts),
+      diamonds: cloneCardArray(s.foundations.diamonds),
+      clubs: cloneCardArray(s.foundations.clubs),
+    },
+    tableau: [
+      cloneCardArray(tab[0]), cloneCardArray(tab[1]), cloneCardArray(tab[2]), cloneCardArray(tab[3]),
+      cloneCardArray(tab[4]), cloneCardArray(tab[5]), cloneCardArray(tab[6]),
+    ],
     drawCount: s.drawCount,
     moves: s.moves,
   };
   if (s.lastFlips) {
-    res.lastFlips = s.lastFlips.map(cloneCard);
+    res.lastFlips = cloneCardArray(s.lastFlips);
   }
   return res;
 }
